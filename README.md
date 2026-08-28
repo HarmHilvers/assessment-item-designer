@@ -65,6 +65,39 @@ Each completed assessment produces:
 - `answer-key.md` — answers, rationales, outlines, and rubrics;
 - `quality-audit.json` — structured record of candidates, reviews, evidence, budgets, duplication controls, and approvals.
 
+## Installation
+
+Install the skill directly from this GitHub repository with Codex's built-in skill installer:
+
+```bash
+python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
+  --repo HarmHilvers/assessment-item-designer \
+  --path skills/assessment-item-designer
+```
+
+This installs the skill in:
+
+```text
+~/.codex/skills/assessment-item-designer/
+```
+
+Only the skill directory is installed. The plugin manifest and other repository-level files are not required for direct skill use in Codex.
+
+Alternatively, install a local checkout manually:
+
+```bash
+mkdir -p ~/.codex/skills
+cp -R skills/assessment-item-designer ~/.codex/skills/
+```
+
+The destination directory must not already exist. After installation, start a new Codex turn or task and test explicit activation with:
+
+```text
+$assessment-item-designer Help me create a grounded assessment.
+```
+
+Codex can also activate the skill implicitly for assessment-design and assessment-review requests. The skill directory follows the structure described in the [official OpenAI skill documentation](https://developers.openai.com/plugins/build/skills).
+
 ## Audit validator
 
 The included validator checks the declared 2026.1 audit structure and deterministic invariants:
@@ -102,17 +135,6 @@ assessment-item-designer/
 
 Release 2026.1 deliberately contains no MCP server, app, hook, `agents/openai.yaml`, or marketplace configuration.
 
-## Repository-scoped testing
-
-Codex can discover a repository-scoped copy of the skill under `.agents/skills/`. For local behavioral testing without a marketplace, copy the skill into a temporary or test repository:
-
-```bash
-mkdir -p .agents/skills/assessment-item-designer
-cp -R skills/assessment-item-designer/. .agents/skills/assessment-item-designer/
-```
-
-Then test explicit activation with `$assessment-item-designer` and implicit activation with assessment-design or assessment-review requests. This does not constitute a complete ChatGPT Desktop plugin installation test.
-
 ## Research basis and limitations
 
 The design credits:
@@ -133,10 +155,3 @@ See [`research-basis.md`](skills/assessment-item-designer/references/research-ba
 The Isley et al. replication repository exposed no visible license when release 2026.1 was packaged. Its code and prompt templates were therefore not copied into this plugin. The plugin's instructions and validation script were independently authored while methodological ideas are credited.
 
 This repository currently makes no open-source license grant. Unless and until a license is added, default copyright rules apply.
-
-## Author
-
-Created by **Harm Hilvers**.
-
-- Website: [hilvers.net](https://hilvers.net)
-- GitHub: [HarmHilvers](https://github.com/HarmHilvers)

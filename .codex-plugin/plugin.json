@@ -1,0 +1,21 @@
+{
+  "name": "assessment-item-designer",
+  "version": "2026.1.0",
+  "description": "Generate and review grounded assessment items with staged quality controls.",
+  "author": {
+    "name": "Harm Hilvers",
+    "url": "https://hilvers.net"
+  },
+  "homepage": "https://hilvers.net",
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Assessment Item Designer",
+    "shortDescription": "Create and review assessment items with quality controls.",
+    "longDescription": "Create and review grounded multiple-choice and essay assessments with blueprint, Bloom, and audit controls. The iterative generation-and-judging architecture adapts Isley et al. (2025).",
+    "developerName": "Harm Hilvers",
+    "category": "Education",
+    "capabilities": ["Read", "Write"],
+    "websiteURL": "https://hilvers.net",
+    "defaultPrompt": "Create or review a grounded assessment through an approved blueprint and staged quality checks."
+  }
+}

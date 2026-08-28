@@ -2,7 +2,7 @@
 
 Assessment Item Designer is an English-language Codex plugin for creating and reviewing grounded multiple-choice and essay assessment items through staged, auditable quality controls.
 
-Release **2026.1** uses manifest version **2026.1.0**.
+Release **2026.2** uses manifest version **2026.2.0**.
 
 ## What it does
 
@@ -20,6 +20,12 @@ The plugin helps instructors move from course materials and learning outcomes to
 - mandatory instructor approval before delivery.
 
 The instructions and audit keys are English. Generated assessments may use another language requested by the instructor.
+
+## MCQ quality gate
+
+Release 2026.2 adds a canonical MCQ review gate for alignment, cognitive level, construct-relevant difficulty, stem clarity, one-best-answer validity, distractor plausibility, option quality, cue avoidance, and fairness.
+
+MCQs default to three strong options. Additional options are appropriate only when every distractor is genuinely plausible or the approved blueprint requires them; the workflow never pads an item with weak distractors. Passing items must have one defensible best answer, a self-contained stem, misconception-based distractors, mutually exclusive and parallel options, and no construct-irrelevant difficulty.
 
 ## Quality-control workflow
 
@@ -100,7 +106,7 @@ Codex can also activate the skill implicitly for assessment-design and assessmen
 
 ## Audit validator
 
-The included validator checks the declared 2026.1 audit structure and deterministic invariants:
+The included validator checks the declared 2026.2 audit structure and deterministic invariants:
 
 ```bash
 python3 skills/assessment-item-designer/scripts/validate_audit.py quality-audit.json
@@ -133,7 +139,7 @@ assessment-item-designer/
 └── README.md
 ```
 
-Release 2026.1 deliberately contains no MCP server, app, hook, `agents/openai.yaml`, or marketplace configuration.
+Release 2026.2 deliberately contains no MCP server, app, hook, `agents/openai.yaml`, or marketplace configuration.
 
 ## Research basis and limitations
 
@@ -146,12 +152,22 @@ The design credits:
 
 The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure, its use of accepted and rejected examples, and a separate final judging stage. It extends that procedure with assessment blueprints, revised Bloom classification, evidence requirements, blind answer verification, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.1 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.2 does not reproduce post-administration psychometric validation.
+
+The MCQ quality gate additionally draws on:
+
+- [Haladyna, Downing, and Rodriguez (2002)](https://doi.org/10.1207/S15324818AME1503_5);
+- [Rodriguez (2005)](https://doi.org/10.1111/j.1745-3992.2005.00006.x);
+- [McGill University’s Guidelines for Writing MCQs](https://teachingkb.mcgill.ca/tlk/guidelines-for-writing-mcqs);
+- [Yale Poorvu Center’s Designing Assessment Questions](https://poorvucenter.yale.edu/teaching/teaching-resource-library/designing-assessment-questions);
+- [NBME Item-Writing Guide, 6th ed.](https://www.nbme.org/sites/default/files/2021-02/NBME_Item%20Writing%20Guide_R_6.pdf).
+
+These sources support general MCQ item-writing principles, not the complete plugin workflow or its automated semantic judgments.
 
 See [`research-basis.md`](skills/assessment-item-designer/references/research-basis.md) for the complete attribution, departures, and empirical limitations.
 
 ## Licensing and reuse
 
-The Isley et al. replication repository exposed no visible license when release 2026.1 was packaged. Its code and prompt templates were therefore not copied into this plugin. The plugin's instructions and validation script were independently authored while methodological ideas are credited.
+The Isley et al. replication repository exposed no visible license when release 2026.2 was packaged. Its code and prompt templates were therefore not copied into this plugin. The plugin's instructions and validation script were independently authored while methodological ideas are credited.
 
 This repository currently makes no open-source license grant. Unless and until a license is added, default copyright rules apply.

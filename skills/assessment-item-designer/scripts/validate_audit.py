@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.1 audit declarations.
+"""Validate Assessment Item Designer 2026.2 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.1"
-MANIFEST_VERSION = "2026.1.0"
+RELEASE = "2026.2"
+MANIFEST_VERSION = "2026.2.0"
 BLOOM = {"Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"}
 DIFFICULTY = {"Easy", "Medium", "Hard"}
 FITS = {"pass", "fail"}
@@ -35,16 +35,28 @@ FINAL_STATUSES = {
 }
 SCENARIO_ORIGINS = {"source_derived", "constructed", "mixed", "not_applicable"}
 REQUIRED_REJECTION_CRITERIA = {
-    "course_meta_or_logistics",
-    "explicit_syllabus_wording",
-    "option_to_option_references",
-    "unintended_external_dependencies",
-    "trivial_retrieval_or_formula_substitution",
-    "resource_demands_match_blueprint",
-    "unsupported_concepts",
-    "multiple_defensible_answers",
-    "distractor_quality",
+    "answer_defensible_without_unstated_assumptions",
     "answer_clues",
+    "cognitive_level_alignment",
+    "complex_option_formats_absent",
+    "construct_relevant_difficulty",
+    "course_meta_or_logistics",
+    "distractor_quality",
+    "explicit_syllabus_wording",
+    "fairness_and_construct_relevance",
+    "learning_outcome_alignment",
+    "negative_wording_justified",
+    "one_best_answer",
+    "option_mutual_exclusivity",
+    "option_parallelism",
+    "option_to_option_references",
+    "resource_demands_match_blueprint",
+    "stem_clarity_and_self_containment",
+    "stem_relevance_and_concision",
+    "stem_task_understandable_before_options",
+    "trivial_retrieval_or_formula_substitution",
+    "unintended_external_dependencies",
+    "unsupported_concepts",
 }
 FORBIDDEN_REASONING_KEYS = {
     "chain_of_thought",
@@ -448,7 +460,7 @@ class AuditValidator:
             self.validate_essay(item, position, path)
         self.validate_duplication(candidate.get("duplication"), candidate, path)
         self.validate_exemplar_context(candidate.get("exemplar_context"), path)
-        self.validate_rejection_checks(candidate.get("rejection_checks"), path)
+        self.validate_rejection_checks(candidate.get("rejection_checks"), candidate, path)
 
         if candidate.get("verdict") not in VERDICTS:
             self.error(f"{path}.verdict", "has an unsupported value")
@@ -522,8 +534,8 @@ class AuditValidator:
         if not isinstance(item.get("stem"), str) or not item.get("stem", "").strip():
             self.error(f"{item_path}.stem", "must be a non-empty string")
         options = self.require_list(item.get("options"), f"{item_path}.options")
-        if len(options) < 2:
-            self.error(f"{item_path}.options", "must contain at least two options; four is the default")
+        if len(options) < 3:
+            self.error(f"{item_path}.options", "must contain at least three options; three strong options are the default")
         ids: set[str] = set()
         for index, raw in enumerate(options):
             option_path = f"{item_path}.options[{index}]"
@@ -678,20 +690,41 @@ class AuditValidator:
             if len(entries) > 5:
                 self.error(f"{path}.exemplar_context.{field}", "cannot exceed five")
 
-    def validate_rejection_checks(self, value: Any, path: str) -> None:
+    def validate_rejection_checks(self, value: Any, candidate: dict[str, Any], path: str) -> None:
         checks = self.require_list(value, f"{path}.rejection_checks")
         seen: set[str] = set()
+        results: dict[str, Any] = {}
         for index, raw in enumerate(checks):
             check_path = f"{path}.rejection_checks[{index}]"
             check = self.require_object(raw, check_path)
             self.require_keys(check, check_path, {"criterion", "result", "justification"})
             if isinstance(check.get("criterion"), str):
-                seen.add(check["criterion"])
+                criterion = check["criterion"]
+                if criterion in seen:
+                    self.error(f"{check_path}.criterion", "must not duplicate another rejection criterion")
+                seen.add(criterion)
+                results[criterion] = check.get("result")
             if check.get("result") not in {"pass", "fail", "not_applicable"}:
                 self.error(f"{check_path}.result", "must be pass, fail, or not_applicable")
+            if not isinstance(check.get("justification"), str) or not check.get("justification", "").strip():
+                self.error(f"{check_path}.justification", "must be a non-empty concise observation")
         missing = REQUIRED_REJECTION_CRITERIA - seen
         if missing:
             self.error(f"{path}.rejection_checks", f"missing criteria: {', '.join(sorted(missing))}")
+        if candidate.get("verdict") == "pass":
+            failed = sorted(criterion for criterion in REQUIRED_REJECTION_CRITERIA if results.get(criterion) == "fail")
+            if failed:
+                self.error(f"{path}.rejection_checks", f"passing candidates cannot fail criteria: {', '.join(failed)}")
+            if candidate.get("item_type") == "mcq":
+                inapplicable = sorted(
+                    criterion for criterion in REQUIRED_REJECTION_CRITERIA
+                    if results.get(criterion) == "not_applicable"
+                )
+                if inapplicable:
+                    self.error(
+                        f"{path}.rejection_checks",
+                        f"passing MCQs must resolve every required criterion: {', '.join(inapplicable)}",
+                    )
 
     def validate_final_selection(self, value: Any) -> None:
         obj = self.require_object(value, "$.final_selection")
@@ -891,7 +924,6 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
                 {"option_id": "opt-1", "text": "Use the unrelated rule.", "misconception_rationale": "Confuses adjacent principles."},
                 {"option_id": "opt-2", "text": "Apply the supported rule.", "misconception_rationale": None},
                 {"option_id": "opt-3", "text": "Ignore the relevant evidence.", "misconception_rationale": "Treats evidence as optional."},
-                {"option_id": "opt-4", "text": "Reverse the supported relation.", "misconception_rationale": "Reverses cause and effect."},
             ],
             "correct_option_id": key,
             "answer_rationale": "The supported rule directly addresses the stated evidence.",
@@ -900,7 +932,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             {
                 "reviewer_id": f"{cid}-S1",
                 "selected_option_id": key,
-                "options_order": ["opt-1", "opt-2", "opt-3", "opt-4"],
+                "options_order": ["opt-1", "opt-2", "opt-3"],
                 "options_reordered": False,
                 "justification": "The supported rule is the only option consistent with the case.",
                 "review_context": review_context(),
@@ -908,7 +940,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             {
                 "reviewer_id": f"{cid}-S2",
                 "selected_option_id": key,
-                "options_order": ["opt-3", "opt-1", "opt-4", "opt-2"],
+                "options_order": ["opt-3", "opt-1", "opt-2"],
                 "options_reordered": True,
                 "justification": "The same stable option remains correct after reordering.",
                 "review_context": review_context(),
@@ -1180,6 +1212,41 @@ def run_self_tests() -> int:
     tests.append(("explicit rejection criteria", bad, False))
 
     bad = valid_fixture()
+    bad["candidates"][0]["rejection_checks"] = [
+        check for check in bad["candidates"][0]["rejection_checks"]
+        if check["criterion"] != "one_best_answer"
+    ]
+    tests.append(("missing canonical MCQ criterion", bad, False))
+
+    bad = valid_fixture()
+    next(
+        check for check in bad["candidates"][0]["rejection_checks"]
+        if check["criterion"] == "one_best_answer"
+    )["result"] = "not_applicable"
+    tests.append(("passing MCQ cannot skip a quality criterion", bad, False))
+
+    bad = valid_fixture()
+    next(
+        check for check in bad["candidates"][0]["rejection_checks"]
+        if check["criterion"] == "distractor_quality"
+    )["result"] = "fail"
+    tests.append(("passing candidate cannot fail a quality criterion", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["item"]["options"] = bad["candidates"][0]["item"]["options"][:2]
+    bad["candidates"][0]["blind_answer_checks"][0]["options_order"] = ["opt-1", "opt-2"]
+    bad["candidates"][0]["blind_answer_checks"][1]["options_order"] = ["opt-2", "opt-1"]
+    tests.append(("fewer than three MCQ options", bad, False))
+
+    bad = valid_fixture()
+    bad["schema_version"] = "2026.1"
+    tests.append(("obsolete audit schema version", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["item"]["correct_option_id"] = "opt-4"
+    tests.append(("answer key outside reduced option set", bad, False))
+
+    bad = valid_fixture()
     bad["candidates"][2]["item"]["rubric"][0]["max_points"] = 2
     tests.append(("essay rubric total", bad, False))
 
@@ -1231,7 +1298,7 @@ def run_self_tests() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.1 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.2 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1255,7 +1322,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.1 structure and invariants passed.")
+        print("Audit valid: declared 2026.2 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

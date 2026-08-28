@@ -5,7 +5,7 @@ description: Create or review grounded multiple-choice and essay assessment item
 
 # Assessment Item Designer
 
-Release designation: **2026.1**. Manifest version: **2026.1.0**.
+Release designation: **2026.2**. Manifest version: **2026.2.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -109,7 +109,7 @@ Do not hide budget exhaustion by renaming a revision or restarting a position.
 
 Every candidate must record its position, evidence, scenario origin, assessed concepts, `concept_signature`, targets, independent review results, fit results, overlap results, exemplar context, reviewer-context declarations, revision and replacement counts, verdict, and selection status.
 
-MCQs normally contain four stable `option_id` values, exactly one keyed option, an answer rationale, and one misconception rationale for each distractor. Essays contain an answer outline, defensible alternatives, an observable analytic rubric with reconciled points, and a notice that the essay workflow is not empirically validated by Isley et al. (2025).
+MCQs default to three strong options with stable `option_id` values, exactly one keyed option, an answer rationale, and one misconception rationale for each distractor. Use more than three options only when every distractor is genuinely plausible or the approved blueprint requires it; never pad an item with weak distractors. Essays contain an answer outline, defensible alternatives, an observable analytic rubric with reconciled points, and a notice that the essay workflow is not empirically validated by Isley et al. (2025).
 
 ## Stage 5 — Judge each candidate
 
@@ -117,7 +117,7 @@ Run distinct review passes described in `quality-framework.md`:
 
 1. grounding and blueprint alignment;
 2. independent Bloom and difficulty review;
-3. item-form and fairness review;
+3. the canonical MCQ quality gate or essay-form review, including item form and fairness;
 4. position-aware conceptual and lexical duplication review;
 5. two isolated blind answer checks for MCQs;
 6. separate final judge.
@@ -152,7 +152,7 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.1`, manifest version `2026.1.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.2`, manifest version `2026.2.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

@@ -29,7 +29,7 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.1",
+  "schema_version": "2026.2",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
   "blueprint": {},
@@ -48,8 +48,8 @@ Required fields:
 
 ```json
 {
-  "release": "2026.1",
-  "manifest_version": "2026.1.0",
+  "release": "2026.2",
+  "manifest_version": "2026.2.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {
@@ -170,7 +170,7 @@ Each record requires:
 
 Evidence entries require `source_id`, `locator`, and `supports`. Constructed scenario details need not pretend to be quoted from a source, but assessed principles still require evidence.
 
-For `item_type: mcq`, `item` contains `stem`, `options`, `correct_option_id`, and `answer_rationale`. Each option contains stable `option_id`, `text`, and `misconception_rationale`; the correct option may use `null` for its misconception rationale. Normally provide four options. `correct_option_id` must identify exactly one option.
+For `item_type: mcq`, `item` contains `stem`, `options`, `correct_option_id`, and `answer_rationale`. Each option contains stable `option_id`, `text`, and `misconception_rationale`; the correct option may use `null` for its misconception rationale. Default to three strong options. Use more only when every distractor is genuinely plausible or the approved blueprint requires it; never pad with weak distractors. `correct_option_id` must identify exactly one option.
 
 For `item_type: essay`, `item` contains `prompt`, `answer_outline`, `defensible_alternatives`, `rubric`, and `empirical_limitation_notice`. Each rubric criterion has `criterion_id`, `criterion`, `max_points`, and observable `levels`; criterion maxima must equal the blueprint position points.
 
@@ -197,7 +197,32 @@ Same-position `expected` does not fail solely for construct overlap. Same-positi
 
 `exemplar_context` contains `calibration_ids`, `accepted_run_ids`, `rejected_run_ids`, and `preceding_same_position_candidate_id`. Candidate 1 uses `null` for the preceding candidate. Each later same-position candidate must name the immediately preceding one, and that ID must occur in its accepted or rejected run IDs. Lists are capped at five each.
 
-Each entry in `rejection_checks` contains `criterion`, `result: pass | fail | not_applicable`, and `justification`. The criteria must cover course meta/logistics, syllabus wording, option references, external dependencies, trivial retrieval/formula substitution where relevant, resource fit, grounding, answer uniqueness, distractor quality, and answer clues.
+Each entry in `rejection_checks` contains `criterion`, `result: pass | fail | not_applicable`, and `justification`. Use these required criterion IDs:
+
+- `course_meta_or_logistics`;
+- `explicit_syllabus_wording`;
+- `option_to_option_references`;
+- `unintended_external_dependencies`;
+- `trivial_retrieval_or_formula_substitution`;
+- `resource_demands_match_blueprint`;
+- `unsupported_concepts`;
+- `learning_outcome_alignment`;
+- `cognitive_level_alignment`;
+- `construct_relevant_difficulty`;
+- `stem_clarity_and_self_containment`;
+- `stem_task_understandable_before_options`;
+- `stem_relevance_and_concision`;
+- `negative_wording_justified`;
+- `one_best_answer`;
+- `answer_defensible_without_unstated_assumptions`;
+- `distractor_quality`;
+- `option_mutual_exclusivity`;
+- `option_parallelism`;
+- `answer_clues`;
+- `complex_option_formats_absent`;
+- `fairness_and_construct_relevance`.
+
+Use `not_applicable` only for a genuinely inapplicable criterion, including MCQ-only form criteria on essays. A passing candidate cannot contain a failed required check. A passing MCQ must record `pass` for every required criterion and satisfy the canonical checklist in `quality-framework.md`; a criterion label does not prove its semantic truth.
 
 For a passing MCQ, `blind_answer_checks` contains exactly two entries. Each contains `reviewer_id`, `selected_option_id`, `options_order`, `options_reordered`, `justification`, and `review_context`. The second entry has `options_reordered: true`; both agree with the key by stable option ID.
 

@@ -1,6 +1,6 @@
 {
   "name": "assessment-item-designer",
-  "version": "2026.1.0",
+  "version": "2026.2.0",
   "description": "Generate and review grounded assessment items with staged quality controls.",
   "author": {
     "name": "Harm Hilvers",
@@ -16,6 +16,10 @@
     "category": "Education",
     "capabilities": ["Read", "Write"],
     "websiteURL": "https://hilvers.net",
-    "defaultPrompt": "Create or review a grounded assessment through an approved blueprint and staged quality checks."
+    "defaultPrompt": [
+      "Create a grounded assessment from my course materials.",
+      "Review these MCQs using the quality gate.",
+      "Build and approve an assessment blueprint."
+    ]
   }
 }

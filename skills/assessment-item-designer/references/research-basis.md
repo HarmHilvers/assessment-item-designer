@@ -58,11 +58,23 @@ The study names open-response questions as a possible future extension. Do not c
 
 Model-estimated difficulty is a pre-administration judgment, not an empirical calibration. IRT difficulty is estimated from student-response data. The two must remain distinct in language and audit fields. The finding that generated items were empirically easier also cautions against treating a model's difficulty label as measurement evidence.
 
-Release 2026.1 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses.
+Release 2026.2 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses.
+
+## MCQ item-writing evidence
+
+The canonical MCQ quality gate also draws on established item-writing guidance. These sources support general design principles such as alignment, focused stems, one-best-answer construction, plausible distractors, parallel options, cue avoidance, and construct-relevant fairness. They do not validate this plugin's complete workflow, automated judgments, Bloom classifications, or essay extensions.
+
+- `[S1]` Haladyna, T. M., Downing, S. M., & Rodriguez, M. C. (2002). *A review of multiple-choice item-writing guidelines for classroom assessment*. Applied Measurement in Education, 15(3), 309–333. <https://doi.org/10.1207/S15324818AME1503_5>
+- `[S2]` Rodriguez, M. C. (2005). *Three options are optimal for multiple-choice items: A meta-analysis of 80 years of research*. Educational Measurement: Issues and Practice, 24(2), 3–13. <https://doi.org/10.1111/j.1745-3992.2005.00006.x>
+- `[S3]` McGill University Teaching and Learning Knowledge Base. *Guidelines for Writing MCQs*. <https://teachingkb.mcgill.ca/tlk/guidelines-for-writing-mcqs>
+- `[S4]` Yale University Poorvu Center for Teaching and Learning. *Designing Assessment Questions*. <https://poorvucenter.yale.edu/teaching/teaching-resource-library/designing-assessment-questions>
+- `[S5]` National Board of Medical Examiners. *NBME Item-Writing Guide*, 6th ed. <https://www.nbme.org/sites/default/files/2021-02/NBME_Item%20Writing%20Guide_R_6.pdf>
+
+The three-option recommendation is a default against padding, not a claim that every four-option item is defective. More options remain permissible when all distractors are genuinely plausible or the approved blueprint requires them.
 
 ## Repository reuse and licensing
 
-At packaging time for release 2026.1, the repository root exposed no visible `LICENSE` file. Absence of a license is not permission to copy copyrighted material.
+At packaging time for release 2026.2, the repository root exposed no visible `LICENSE` file. Absence of a license is not permission to copy copyrighted material.
 
 Therefore:
 
@@ -70,6 +82,6 @@ Therefore:
 - methodological ideas may be described with clear attribution;
 - repository code and prompt templates must not be copied verbatim unless a later license or explicit permission allows it;
 - the repository license must be checked again before any later packaging;
-- release 2026.1 makes no open-source license claim.
+- release 2026.2 makes no open-source license claim.
 
 This notice concerns reuse permission, not the scholarly citation obligation, which applies regardless.

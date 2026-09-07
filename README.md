@@ -2,7 +2,7 @@
 
 Assessment Item Designer is an English-language Codex plugin for creating and reviewing grounded multiple-choice and essay assessment items through staged, auditable quality controls.
 
-Release **2026.3** uses manifest version **2026.3.0**.
+Release **2026.4** uses manifest version **2026.4.0**.
 
 ## What it does
 
@@ -21,54 +21,15 @@ The plugin helps instructors move from course materials and learning outcomes to
 
 The instructions and audit keys are English. Generated assessments may use another language requested by the instructor.
 
-## MCQ quality gate
+## How it works
 
-Release 2026.2 introduced a canonical MCQ review gate for alignment, cognitive level, construct-relevant difficulty, stem clarity, one-best-answer validity, distractor plausibility, option quality, cue avoidance, and fairness.
+1. **Provide your materials.** Supply an assessment blueprint, or learning outcomes and authorized course materials. Specify the audience, language, question types and assessment requirements.
+2. **Approve the blueprint.** Agree on the concepts, points and intended cognitive demand and difficulty for each question. Revised Bloom taxonomy describes the thinking students must demonstrate; difficulty is a separate judgment.
+3. **Generate and review questions.** Candidates are created one at a time, with earlier review results informing the next candidate. Independent subagents assess cognitive demand, difficulty and answerability without seeing the intended answers or target labels. Their findings are then compared with the blueprint.
+4. **Assemble the assessment.** Select questions that pass the required checks, review the complete set for duplication, and verify coverage, points and answer-key consistency.
+5. **Give final approval.** Review the assessment and separate answer key before approving them for use. Unresolved quality checks must be completed first.
 
-MCQs default to three strong options. Additional options are appropriate only when every distractor is genuinely plausible or the approved blueprint requires them; the workflow never pads an item with weak distractors. Passing items must have one defensible best answer, a self-contained stem, misconception-based distractors, mutually exclusive and parallel options, and no construct-irrelevant difficulty.
-
-## Quality-control workflow
-
-1. Collect an assessment blueprint, or learning outcomes plus authorized course materials.
-2. Establish grounding and create stable blueprint positions.
-3. Obtain instructor approval of the blueprint.
-4. Register optional calibration exemplars.
-5. Generate candidates sequentially, updating accepted and rejected run exemplars after every verdict.
-6. Review grounding, Bloom, difficulty, item form, fairness, duplication, and answerability in separate passes.
-7. Select one passed candidate per blueprint position.
-8. Run a new duplication review over the selected assessment only.
-9. Validate blueprint coverage, distributions, points, answer-key membership, and the JSON audit.
-10. Obtain final instructor approval before delivery.
-
-The workflow fails closed when grounding, reviewer isolation, duplication disposition, budget compliance, or approval cannot be established.
-
-## Mandatory subagent reviews in 2026.3
-
-This release requires four fresh review subagents per MCQ candidate: classification of Bloom/difficulty, two blind answer solvers, and a separate final judge. Essay candidates require classification and final-judge subagents. Every call starts without inherited conversation history (`fork_turns: "none"` in Codex); reviewers are never reused across roles, candidates, or revisions.
-
-The coordinator supplies only the permitted review packet, records real agent IDs and checks the results. Reviewers must not inspect other workspace files or contact other agents. A separate subagent does not itself create a filesystem security boundary. Missing subagents or unverified isolation block approval and final delivery, even if an instructor approves the content. Reviews can run sequentially within available agent capacity.
-
-The host must support fresh subagents, reading/writing assessment files, and Python 3 for the standard-library-only validator. Audit version 2026.3 requires subagent provenance; 2026.2 audits are not automatically migrated. See the [subagent execution contract](skills/assessment-item-designer/references/quality-framework.md#subagent-execution-contract) for packet boundaries and failure handling.
-
-## Bloom and difficulty
-
-Difficulty is designed through revised Bloom taxonomy and independently reviewed from the actual cognitive work required by the item.
-
-The audit separates:
-
-- `target_bloom` from `reviewed_bloom`;
-- `target_difficulty` from `estimated_difficulty`;
-- target fit from the independent classification itself.
-
-A fixed-response MCQ cannot be classified as `Create`. Model-estimated difficulty is a pre-administration design judgment and must not be described as student-response-based IRT difficulty.
-
-## Position-aware duplication
-
-Alternative candidates for the same blueprint position are expected to assess the same construct. They do not fail merely because their assessed concepts overlap. They are instead checked for excessive similarity in wording, structure, scenario, evidence, and solution route.
-
-Across different blueprint positions, substantive conceptual overlap fails unless the approved blueprint explicitly authorizes repetition. When repetition is authorized, context-only variation is insufficient: the items must require materially different cognition or evidence.
-
-Exact duplicates fail. Normalized lexical similarity of `0.85` or higher requires manual review, but low lexical similarity never proves conceptual distinctness.
+Bloom levels are based on the work a student must actually perform. A fixed-response multiple-choice question cannot demonstrate `Create`. Estimated difficulty is a design judgment before administration; measuring actual item difficulty requires student-response data.
 
 ## Outputs
 
@@ -81,7 +42,11 @@ Each completed assessment produces:
 
 ## Installation
 
-Install the skill directly from this GitHub repository with Codex's built-in skill installer:
+Installation depends on your AI application. The [Agent Plugins standard](https://agent-plugins.org/plugin-authors/build-an-agent-plugin) defines a portable package format, while installation and distribution remain application-specific.
+
+This repository currently provides a Codex plugin manifest at `.codex-plugin/plugin.json` and a standalone skill under `skills/assessment-item-designer/`. It does not yet include the root `plugin.json` required by the portable Agent Plugins format. The instructions below install the skill in Codex; they are not a universal plugin installation command.
+
+Install with Codex's built-in skill installer:
 
 ```bash
 python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-github.py \
@@ -89,65 +54,13 @@ python3 ~/.codex/skills/.system/skill-installer/scripts/install-skill-from-githu
   --path skills/assessment-item-designer
 ```
 
-This installs the skill in:
-
-```text
-~/.codex/skills/assessment-item-designer/
-```
-
-Only the skill directory is installed. The plugin manifest and other repository-level files are not required for direct skill use in Codex.
-
-Alternatively, install a local checkout manually:
-
-```bash
-mkdir -p ~/.codex/skills
-cp -R skills/assessment-item-designer ~/.codex/skills/
-```
-
-The destination directory must not already exist. After installation, start a new Codex turn or task and test explicit activation with:
+This installs the skill into `~/.codex/skills/assessment-item-designer/`. The destination must not already exist. Open a new Codex task and try:
 
 ```text
 $assessment-item-designer Help me create a grounded assessment.
 ```
 
-Codex can also activate the skill implicitly for assessment-design and assessment-review requests. The skill directory follows the structure described in the [official OpenAI skill documentation](https://developers.openai.com/plugins/build/skills).
-
-## Audit validator
-
-The included validator checks the declared 2026.3 audit structure and deterministic invariants:
-
-```bash
-python3 skills/assessment-item-designer/scripts/validate_audit.py quality-audit.json
-```
-
-Run the built-in positive and negative fixture suite with:
-
-```bash
-python3 skills/assessment-item-designer/scripts/validate_audit.py --self-test
-```
-
-The validator checks structure, IDs, declared budgets, evidence-field separation, option membership, rubric totals, reviewer-isolation declarations, exemplar bounds, sequential memory, overlap disposition, selected-set validation, and approval-state consistency. It cannot prove that a source truly supports a claim, a semantic judgment is correct, reviewers were genuinely independent, or an approver's identity is authentic.
-
-## Repository structure
-
-```text
-assessment-item-designer/
-├── .codex-plugin/
-│   └── plugin.json
-├── skills/
-│   └── assessment-item-designer/
-│       ├── SKILL.md
-│       ├── references/
-│       │   ├── bloom-framework.md
-│       │   ├── output-contract.md
-│       │   ├── quality-framework.md
-│       │   └── research-basis.md
-│       └── scripts/
-│           └── validate_audit.py
-└── README.md
-```
-
-Release 2026.3 deliberately contains no MCP server, app, hook, `agents/openai.yaml`, or marketplace configuration.
+The workflow requires an application that can run fresh subagents, read and write assessment files, and execute Python 3. For other applications, consult their installation documentation and verify these capabilities before use.
 
 ## Research basis and limitations
 
@@ -160,7 +73,7 @@ The design credits:
 
 The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure, its use of accepted and rejected examples, and a separate final judging stage. It extends that procedure with assessment blueprints, revised Bloom classification, evidence requirements, blind answer verification, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.3 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.4 does not reproduce post-administration psychometric validation.
 
 The MCQ quality gate additionally draws on:
 
@@ -174,8 +87,8 @@ These sources support general MCQ item-writing principles, not the complete plug
 
 See [`research-basis.md`](skills/assessment-item-designer/references/research-basis.md) for the complete attribution, departures, and empirical limitations.
 
-## Licensing and reuse
+## License
 
-The Isley et al. replication repository exposed no visible license when release 2026.2 was packaged. Its code and prompt templates were therefore not copied into this plugin. The plugin's instructions and validation script were independently authored while methodological ideas are credited.
+Licensed under the [MIT License](LICENSE). Copyright © 2026 Harm Hilvers.
 
-This repository currently makes no open-source license grant. Unless and until a license is added, default copyright rules apply.
+The license covers this project's original instructions, documentation and scripts. Referenced research and third-party materials retain their own terms.

@@ -5,7 +5,7 @@ description: Create or review grounded multiple-choice and essay assessment item
 
 # Assessment Item Designer
 
-Release designation: **2026.3**. Manifest version: **2026.3.0**.
+Release designation: **2026.4**. Manifest version: **2026.4.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -154,7 +154,7 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.3`, manifest version `2026.3.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.4`, manifest version `2026.4.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

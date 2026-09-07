@@ -1,6 +1,7 @@
 {
   "name": "assessment-item-designer",
-  "version": "2026.3.0",
+  "version": "2026.4.0",
+  "license": "MIT",
   "description": "Generate and review grounded assessment items with staged quality controls.",
   "author": {
     "name": "Harm Hilvers",

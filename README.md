@@ -1,6 +1,6 @@
 # Assessment Item Designer
 
-Assessment Item Designer is an Agent Plugin for creating and reviewing grounded multiple-choice and essay assessment items through staged, auditable quality controls.
+Assessment Item Designer is an Agent Plugin that helps instructors, professors, and examinators create and review multiple-choice and essay questions grounded in learning outcomes and course materials. It combines assessment blueprints, independent AI review, and instructor approval to support alignment, clarity, and answer quality.
 
 Release **2026.5** uses manifest version **2026.5.0**.
 

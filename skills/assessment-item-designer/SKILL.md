@@ -1,11 +1,14 @@
 ---
 name: assessment-item-designer
 description: Create or review grounded multiple-choice and essay assessment items through an approved blueprint, revised Bloom targets, sequential exemplar-guided candidate generation, mandatory isolated subagent reviews, duplication control, deterministic audit validation, and mandatory instructor approval. Use when asked to design an exam, test, quiz, MCQs, essay questions, answer keys, assessment blueprints, or to quality-review existing assessment items.
+license: MIT
 ---
 
 # Assessment Item Designer
 
-Release designation: **2026.4**. Manifest version: **2026.4.0**.
+Requires fresh subagents without inherited task history, file read/write access, and Python 3.9 or newer.
+
+Release designation: **2026.5**. Manifest version: **2026.5.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -154,7 +157,7 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.4`, manifest version `2026.4.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.5`, manifest version `2026.5.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 
@@ -162,10 +165,10 @@ For an existing assessment, preserve original item IDs and source text in the au
 
 ## Validation command
 
-Run:
+Resolve `scripts/validate_audit.py` relative to this installed skill directory, not the current workspace. Pass the actual output audit path; store generated assessment files in the instructor's output directory, outside the installed package. For example, from the skill directory:
 
 ```bash
-python3 scripts/validate_audit.py quality-audit.json
+python3 scripts/validate_audit.py /path/to/output/quality-audit.json
 ```
 
 Use `--self-test` to run the included valid and invalid fixture tests. A successful structural validation is necessary but never substitutes for instructor judgment or post-administration psychometrics.

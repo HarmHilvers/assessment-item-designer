@@ -1,8 +1,8 @@
 # Assessment Item Designer
 
-Assessment Item Designer is an English-language Codex plugin for creating and reviewing grounded multiple-choice and essay assessment items through staged, auditable quality controls.
+Assessment Item Designer is an English-language Agent Plugin for creating and reviewing grounded multiple-choice and essay assessment items through staged, auditable quality controls.
 
-Release **2026.4** uses manifest version **2026.4.0**.
+Release **2026.5** uses manifest version **2026.5.0**.
 
 ## What it does
 
@@ -44,7 +44,9 @@ Each completed assessment produces:
 
 Installation depends on your AI application. The [Agent Plugins standard](https://agent-plugins.org/plugin-authors/build-an-agent-plugin) defines a portable package format, while installation and distribution remain application-specific.
 
-This repository currently provides a Codex plugin manifest at `.codex-plugin/plugin.json` and a standalone skill under `skills/assessment-item-designer/`. The instructions below install the skill in Codex; they are not a universal plugin installation command.
+This package follows Agent Plugins 1.0.0, with `plugin.json` at the root and its skill under `skills/assessment-item-designer/`. Install the repository or a downloaded copy through your application's Agent Plugins installation flow. See the [compatible clients and their setup instructions](https://agent-plugins.org/compatible-clients).
+
+For direct skill installation in Codex, use the command below.
 
 Install with Codex's built-in skill installer:
 
@@ -73,7 +75,7 @@ The design credits:
 
 The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure, its use of accepted and rejected examples, and a separate final judging stage. It extends that procedure with assessment blueprints, revised Bloom classification, evidence requirements, blind answer verification, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.4 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.5 does not reproduce post-administration psychometric validation.
 
 The MCQ quality gate additionally draws on:
 

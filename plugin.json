@@ -1,0 +1,20 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "assessment-item-designer",
+  "version": "2026.5.0",
+  "description": "Generate and review grounded assessment items with staged quality controls.",
+  "author": {
+    "name": "Harm Hilvers",
+    "url": "https://hilvers.net"
+  },
+  "homepage": "https://hilvers.net",
+  "license": "MIT",
+  "repository": "https://github.com/HarmHilvers/assessment-item-designer",
+  "keywords": [
+    "education",
+    "assessment",
+    "multiple-choice",
+    "essay",
+    "bloom"
+  ]
+}

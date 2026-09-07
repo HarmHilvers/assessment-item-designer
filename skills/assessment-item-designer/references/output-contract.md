@@ -29,7 +29,7 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.4",
+  "schema_version": "2026.5",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
   "blueprint": {},
@@ -48,8 +48,8 @@ Required fields:
 
 ```json
 {
-  "release": "2026.4",
-  "manifest_version": "2026.4.0",
+  "release": "2026.5",
+  "manifest_version": "2026.5.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {

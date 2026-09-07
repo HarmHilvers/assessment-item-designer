@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.4 audit declarations.
+"""Validate Assessment Item Designer 2026.5 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.4"
-MANIFEST_VERSION = "2026.4.0"
+RELEASE = "2026.5"
+MANIFEST_VERSION = "2026.5.0"
 BLOOM = {"Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"}
 DIFFICULTY = {"Easy", "Medium", "Hard"}
 FITS = {"pass", "fail"}
@@ -1402,7 +1402,7 @@ def run_self_tests() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.4 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.5 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1426,7 +1426,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.4 structure and invariants passed.")
+        print("Audit valid: declared 2026.5 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

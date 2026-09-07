@@ -2,7 +2,7 @@
 
 Assessment Item Designer is an English-language Codex plugin for creating and reviewing grounded multiple-choice and essay assessment items through staged, auditable quality controls.
 
-Release **2026.2** uses manifest version **2026.2.0**.
+Release **2026.3** uses manifest version **2026.3.0**.
 
 ## What it does
 
@@ -23,7 +23,7 @@ The instructions and audit keys are English. Generated assessments may use anoth
 
 ## MCQ quality gate
 
-Release 2026.2 adds a canonical MCQ review gate for alignment, cognitive level, construct-relevant difficulty, stem clarity, one-best-answer validity, distractor plausibility, option quality, cue avoidance, and fairness.
+Release 2026.2 introduced a canonical MCQ review gate for alignment, cognitive level, construct-relevant difficulty, stem clarity, one-best-answer validity, distractor plausibility, option quality, cue avoidance, and fairness.
 
 MCQs default to three strong options. Additional options are appropriate only when every distractor is genuinely plausible or the approved blueprint requires them; the workflow never pads an item with weak distractors. Passing items must have one defensible best answer, a self-contained stem, misconception-based distractors, mutually exclusive and parallel options, and no construct-irrelevant difficulty.
 
@@ -41,6 +41,14 @@ MCQs default to three strong options. Additional options are appropriate only wh
 10. Obtain final instructor approval before delivery.
 
 The workflow fails closed when grounding, reviewer isolation, duplication disposition, budget compliance, or approval cannot be established.
+
+## Mandatory subagent reviews in 2026.3
+
+This release requires four fresh review subagents per MCQ candidate: classification of Bloom/difficulty, two blind answer solvers, and a separate final judge. Essay candidates require classification and final-judge subagents. Every call starts without inherited conversation history (`fork_turns: "none"` in Codex); reviewers are never reused across roles, candidates, or revisions.
+
+The coordinator supplies only the permitted review packet, records real agent IDs and checks the results. Reviewers must not inspect other workspace files or contact other agents. A separate subagent does not itself create a filesystem security boundary. Missing subagents or unverified isolation block approval and final delivery, even if an instructor approves the content. Reviews can run sequentially within available agent capacity.
+
+The host must support fresh subagents, reading/writing assessment files, and Python 3 for the standard-library-only validator. Audit version 2026.3 requires subagent provenance; 2026.2 audits are not automatically migrated. See the [subagent execution contract](skills/assessment-item-designer/references/quality-framework.md#subagent-execution-contract) for packet boundaries and failure handling.
 
 ## Bloom and difficulty
 
@@ -106,7 +114,7 @@ Codex can also activate the skill implicitly for assessment-design and assessmen
 
 ## Audit validator
 
-The included validator checks the declared 2026.2 audit structure and deterministic invariants:
+The included validator checks the declared 2026.3 audit structure and deterministic invariants:
 
 ```bash
 python3 skills/assessment-item-designer/scripts/validate_audit.py quality-audit.json
@@ -139,7 +147,7 @@ assessment-item-designer/
 └── README.md
 ```
 
-Release 2026.2 deliberately contains no MCP server, app, hook, `agents/openai.yaml`, or marketplace configuration.
+Release 2026.3 deliberately contains no MCP server, app, hook, `agents/openai.yaml`, or marketplace configuration.
 
 ## Research basis and limitations
 
@@ -152,7 +160,7 @@ The design credits:
 
 The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure, its use of accepted and rejected examples, and a separate final judging stage. It extends that procedure with assessment blueprints, revised Bloom classification, evidence requirements, blind answer verification, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.2 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.3 does not reproduce post-administration psychometric validation.
 
 The MCQ quality gate additionally draws on:
 

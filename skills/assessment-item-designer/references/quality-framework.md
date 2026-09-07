@@ -4,6 +4,22 @@ Apply these controls as separate, auditable passes. A criterion failure must lea
 
 This file is the canonical MCQ quality gate. Source keys `[S1]` through `[S5]` refer to the full citations and evidence boundaries in [research-basis.md](research-basis.md#mcq-item-writing-evidence). They support general item-writing guidance; they do not extend the empirical claims of Isley et al. (2025).
 
+## Subagent execution contract
+
+For each candidate, use four distinct fresh subagents for MCQs (classification, answer solver 1, answer solver 2, final judge) or two for essays (classification and final judge). Start every review with no inherited conversation history; with Codex collaboration tools use `spawn_agent` with `fork_turns: "none"`. Here history means earlier task dialogue, not baseline system/developer instructions or profile/environment context supplied by the host. If that baseline itself exposes prohibited assessment information, isolation is unverified. Never reuse a reviewer for another role, candidate, or revision. Discard earlier reviews after an item changes and review the revised item with new subagents.
+
+The coordinator constructs minimal review packets rather than passing the complete candidate, audit, skill, or conversation. Reviewers must use only their supplied packet, must not inspect workspace files or contact other agents, and must return a result plus a concise observable justification. A shared workspace is not a security sandbox: if prohibited information is accessed or history inheritance cannot be ruled out, mark isolation unverified. Do not claim technical access isolation merely because a separate agent was started.
+
+- Classification: item prompt/stem, options when present, and permitted resources only. No answer outline, rubric, keys, rationales, exemplar memory, target labels, or prior results. Return Bloom and difficulty judgments before the coordinator compares them with targets.
+- Answer solvers: stem, stable option IDs and text, and permitted resources only. Solver 2 receives an order different from both the displayed original and solver 1. Return the chosen option ID and a short answer justification.
+- Final judge: item, permitted resources, relevant authorized grounding evidence, and the approved position's scope, outcome, points and constraints. Remove target Bloom/difficulty labels and all keys, answer outlines, rubrics, rationales, exemplar memory, and earlier results. For essays, independently establish scoring expectations; the coordinator then checks the generated outline and rubric against those expectations.
+
+Run the final judge after the preceding reviews, without revealing their results. Reviews may run sequentially to respect agent limits; dispose of completed reviewer sessions when the runtime supports it. Never weaken isolation to work around capacity limits. Preserve the generate–judge–refresh sequence between candidates.
+
+Record the actual returned agent ID, `history_inherited: false`, `isolation_method: fresh_subagent`, and the visibility declarations for each call. Agent IDs must be unique across the audit's independent review calls. Keep concise evidence of the supplied packet and returned result in the run record, without storing chain-of-thought. The coordinator verifies declarations against real calls; the JSON validator cannot establish their truth. Audit `reviewer_id` labels are not substitutes for runtime agent IDs.
+
+If a call cannot run or completes with unverified isolation, retain an unresolved escalation and a non-passing candidate. Do not fabricate an agent ID or result. Resume using new subagents when available. Instructor approval never waives mandatory review; manual review remains available for substantive issues such as flagged lexical similarity.
+
 ## 1. Grounding and alignment
 
 For every candidate verify:
@@ -122,7 +138,7 @@ Reject criteria that grade personality, effort, polish unrelated to the outcome,
 
 ## 5. Target-independent Bloom and difficulty review
 
-Use a fresh reviewer context. The reviewer sees the item and permitted resources but not target labels, generator metadata, rationales, previous verdicts, revision history, or exemplar memory. It first records:
+Use a fresh classification subagent under the execution contract above. The reviewer sees the item and permitted resources but not target labels, generator metadata, rationales, previous verdicts, revision history, or exemplar memory. It first records:
 
 - `reviewed_bloom` and a concise observable justification;
 - `estimated_difficulty` and a concise observable justification.
@@ -178,7 +194,7 @@ After each candidate is judged, retain a bounded exemplar memory of accepted and
 
 ## 8. Blind MCQ answer checks
 
-Run two solution passes in genuinely fresh reviewer contexts. Each receives only:
+Run two solution passes with separate fresh subagents under the execution contract above. Each receives only:
 
 - stem;
 - options;
@@ -190,7 +206,9 @@ Each answer reviewer records only the selected `option_id`, a short answer justi
 
 ```yaml
 review_context:
-  isolation_method: fresh_reviewer_context
+  isolation_method: fresh_subagent
+  agent_id: actual-runtime-agent-id
+  history_inherited: false
   isolation_verified: true
   key_visible: false
   prior_verdicts_visible: false
@@ -201,11 +219,11 @@ review_context:
 
 The two answer checks and generated key must agree on the stable `option_id`. Disagreement fails automated verification and triggers revision, rejection, or instructor review.
 
-If the environment cannot provide independent contexts, set `isolation_verified: false`, do not award an automated pass, and require instructor verification. Merely instructing the same context to "forget" is not verified isolation.
+If fresh subagents are unavailable, set `isolation_verified: false`, retain an unresolved escalation, and block approval and delivery until the required reviews are completed. Instructor verification cannot replace them. Asking the same context to "forget" is not isolation.
 
 ## 9. Separate final judge
 
-Use a fresh, key-blind and history-blind final judge after the earlier passes. It may receive the approved blueprint and grounding evidence to assess scope and alignment. It must not receive the generated key, rationales, prior verdicts, revision history, or exemplar memory. It may receive independently reordered MCQ options.
+Use a fresh, key-blind and history-blind final-judge subagent after the earlier passes. It may receive a redacted approved blueprint (without Bloom/difficulty target labels) and grounding evidence to assess scope and alignment. It must not receive the generated key, rationales, prior verdicts, revision history, or exemplar memory. It may receive independently reordered MCQ options.
 
 The final judge determines whether the item is valid and identifies its answer or scoring expectations independently. Record the same reviewer-context declaration. A mismatch with the key or a substantive quality failure prohibits automated pass.
 
@@ -216,7 +234,7 @@ Candidate verdicts are `pass`, `revise`, `reject`, or `manual_review`.
 - `pass` (**GOOD**): all critical criteria are satisfied, isolation is verified, and no unresolved manual check remains.
 - `revise` (**REVISE**): the learning objective and core question are valid, but a correctable stem or option defect exists and revision budget remains.
 - `reject` (**REJECT**): alignment or cognitive level is wrong; the item is ambiguous; multiple answers are defensible; no answer is correct; distractors are predominantly implausible; strong unintended cues remain; or an exhausted candidate path makes revision inappropriate.
-- `manual_review`: an instructor must decide, including when isolation is not verified or lexical similarity is at least 0.85 without an approved resolution.
+- `manual_review`: an instructor must decide, for substantive issues such as lexical similarity of at least 0.85 without an approved resolution. Missing subagent isolation remains blocked until fresh independent reviews complete; a manual decision cannot waive it.
 
 Allow two initial candidates plus at most two fresh replacements per position, and at most two revisions per candidate. Escalate after exhaustion. A replacement is a fresh candidate, not revision number three.
 

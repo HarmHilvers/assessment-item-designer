@@ -58,7 +58,7 @@ The study names open-response questions as a possible future extension. Do not c
 
 Model-estimated difficulty is a pre-administration judgment, not an empirical calibration. IRT difficulty is estimated from student-response data. The two must remain distinct in language and audit fields. The finding that generated items were empirically easier also cautions against treating a model's difficulty label as measurement evidence.
 
-Release 2026.2 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses.
+Release 2026.3 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses.
 
 ## MCQ item-writing evidence
 
@@ -82,6 +82,6 @@ Therefore:
 - methodological ideas may be described with clear attribution;
 - repository code and prompt templates must not be copied verbatim unless a later license or explicit permission allows it;
 - the repository license must be checked again before any later packaging;
-- release 2026.2 makes no open-source license claim.
+- release 2026.3 makes no open-source license claim.
 
 This notice concerns reuse permission, not the scholarly citation obligation, which applies regardless.

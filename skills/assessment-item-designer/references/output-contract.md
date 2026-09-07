@@ -29,7 +29,7 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.2",
+  "schema_version": "2026.3",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
   "blueprint": {},
@@ -48,8 +48,8 @@ Required fields:
 
 ```json
 {
-  "release": "2026.2",
-  "manifest_version": "2026.2.0",
+  "release": "2026.3",
+  "manifest_version": "2026.3.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {
@@ -224,7 +224,7 @@ Each entry in `rejection_checks` contains `criterion`, `result: pass | fail | no
 
 Use `not_applicable` only for a genuinely inapplicable criterion, including MCQ-only form criteria on essays. A passing candidate cannot contain a failed required check. A passing MCQ must record `pass` for every required criterion and satisfy the canonical checklist in `quality-framework.md`; a criterion label does not prove its semantic truth.
 
-For a passing MCQ, `blind_answer_checks` contains exactly two entries. Each contains `reviewer_id`, `selected_option_id`, `options_order`, `options_reordered`, `justification`, and `review_context`. The second entry has `options_reordered: true`; both agree with the key by stable option ID.
+For a passing MCQ, `blind_answer_checks` contains exactly two entries. Each contains `reviewer_id`, `selected_option_id`, `options_order`, `options_reordered`, `justification`, and `review_context`. The second entry has `options_reordered: true` and an actual order different from both the original and solver 1; both agree with the key by stable option ID.
 
 The `final_judge` contains `verdict`, `selected_option_id` for MCQs or `scoring_expectations_supported` for essays, `justification`, and `review_context`. A passed candidate requires a passing final judge.
 
@@ -232,7 +232,9 @@ Every isolated review context uses:
 
 ```json
 {
-  "isolation_method": "fresh_reviewer_context",
+  "isolation_method": "fresh_subagent",
+  "agent_id": "actual-runtime-agent-id",
+  "history_inherited": false,
   "isolation_verified": true,
   "key_visible": false,
   "prior_verdicts_visible": false,
@@ -242,9 +244,11 @@ Every isolated review context uses:
 }
 ```
 
-If isolation is not verified, the candidate must be `manual_review`, `revise`, or `reject`, never an automated `pass`.
+Use the actual runtime agent ID, unique across independent review calls, including classification, both solvers, final judges, other candidates and revisions. Retain earlier revision call IDs and concise packet/result records in the run record; the validator checks uniqueness among the contexts retained in the audit, while the coordinator also checks prior revision calls. Do not reuse the example ID. The coordinator records these values from real calls with no inherited history, not from a reviewer's unsupported assertion.
 
-`verdict` is `pass`, `revise`, `reject`, or `manual_review`. `final_status` is `selected`, `eligible`, `rejected`, `revision_required`, or `instructor_verification_required`.
+If isolation is not verified, the candidate must be `manual_review`, `revise`, or `reject`, never `pass`. A review that could not run records `agent_id: null` and `isolation_verified: false`, with an unresolved escalation and `workflow_status: draft`; do not invent a result. Here `history_inherited` concerns earlier task dialogue; baseline host instructions are not task history, but must not expose prohibited assessment information. Approval and final delivery stay blocked until fresh mandatory subagent reviews complete. Instructor approval cannot waive this requirement. Other required audit structure still applies to draft records.
+
+`verdict` is `pass`, `revise`, `reject`, or `manual_review`. `final_status` is `selected`, `eligible`, `rejected`, `revision_required`, or `independent_review_required`.
 
 ### Final selection
 
@@ -299,4 +303,4 @@ Justifications should be one or two short sentences and normally no more than 50
 
 ## Deterministic validation boundary
 
-`validate_audit.py` checks required structure, values, IDs, budgets, answer-key membership declarations, rubric totals, reviewer isolation declarations, exemplar bounds, sequential memory declarations, overlap disposition, and selected-set validation. It does not establish whether a source truly supports a concept, a Bloom label is semantically correct, a distractor is genuinely plausible, or a human approval is authentic.
+`validate_audit.py` checks required structure, values, IDs, budgets, answer-key membership declarations, rubric totals, reviewer isolation declarations, exemplar bounds, sequential memory declarations, overlap disposition, and selected-set validation. It validates subagent ID uniqueness and history declarations but cannot prove that agents ran or stayed blind. It does not establish whether a source truly supports a concept, a Bloom label is semantically correct, a distractor is genuinely plausible, or a human approval is authentic.

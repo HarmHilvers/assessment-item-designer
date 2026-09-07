@@ -42,11 +42,11 @@ Observable signals: design an intervention, construct an argument, formulate a p
 
 ## Independent review procedure
 
-The reviewer receives the item content and permitted resources, but not:
+Use a fresh classification subagent without inherited history, following the subagent execution contract in `quality-framework.md`. The reviewer receives only the student-facing item content and permitted resources, but not:
 
 - `target_bloom`;
 - `target_difficulty`;
-- generator labels or rationale;
+- generator labels, rationale, answer key, answer outline, or rubric;
 
 - earlier verdicts or revision history;
 - exemplar memory.

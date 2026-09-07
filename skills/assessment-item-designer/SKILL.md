@@ -1,11 +1,11 @@
 ---
 name: assessment-item-designer
-description: Create or review grounded multiple-choice and essay assessment items through an approved blueprint, revised Bloom targets, sequential exemplar-guided candidate generation, isolated answer checks, duplication control, deterministic audit validation, and mandatory instructor approval. Use when asked to design an exam, test, quiz, MCQs, essay questions, answer keys, assessment blueprints, or to quality-review existing assessment items.
+description: Create or review grounded multiple-choice and essay assessment items through an approved blueprint, revised Bloom targets, sequential exemplar-guided candidate generation, mandatory isolated subagent reviews, duplication control, deterministic audit validation, and mandatory instructor approval. Use when asked to design an exam, test, quiz, MCQs, essay questions, answer keys, assessment blueprints, or to quality-review existing assessment items.
 ---
 
 # Assessment Item Designer
 
-Release designation: **2026.2**. Manifest version: **2026.2.0**.
+Release designation: **2026.3**. Manifest version: **2026.3.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -126,7 +126,9 @@ The Bloom/difficulty reviewer must not see targets or generator metadata. Reveal
 
 The two MCQ answer solvers see only stem, options, and permitted resources. Solver 2 receives reordered options. Compare conclusions using stable `option_id`, never letters. The final judge is key-blind and history-blind. Record the required `review_context` declaration for every isolated pass.
 
-If fresh reviewer contexts are unavailable, record `isolation_verified: false`, prohibit an automated pass, and require instructor verification.
+Independent review requires fresh subagents: four per MCQ candidate (classification, two answer solvers, final judge) and two per essay candidate (classification and final judge). Follow the subagent execution contract in `references/quality-framework.md`. This skill explicitly authorizes those review subagents.
+
+If fresh subagents are unavailable or isolation cannot be verified, record `isolation_verified: false` and an unresolved escalation. Block candidate approval and final delivery until the required reviews can be completed. Instructor approval cannot replace these reviews.
 
 ## Stage 6 — Select and validate the assessment
 
@@ -152,7 +154,7 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.2`, manifest version `2026.2.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.3`, manifest version `2026.3.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

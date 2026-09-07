@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.2 audit declarations.
+"""Validate Assessment Item Designer 2026.3 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.2"
-MANIFEST_VERSION = "2026.2.0"
+RELEASE = "2026.3"
+MANIFEST_VERSION = "2026.3.0"
 BLOOM = {"Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"}
 DIFFICULTY = {"Easy", "Medium", "Hard"}
 FITS = {"pass", "fail"}
@@ -31,7 +31,7 @@ FINAL_STATUSES = {
     "eligible",
     "rejected",
     "revision_required",
-    "instructor_verification_required",
+    "independent_review_required",
 }
 SCENARIO_ORIGINS = {"source_derived", "constructed", "mixed", "not_applicable"}
 REQUIRED_REJECTION_CRITERIA = {
@@ -80,6 +80,8 @@ class AuditValidator:
         self.errors: list[str] = []
         self.positions: dict[str, dict[str, Any]] = {}
         self.candidates: dict[str, dict[str, Any]] = {}
+        self.review_agents: dict[str, str] = {}
+        self.unverified_reviews: list[str] = []
 
     def error(self, path: str, message: str) -> None:
         self.errors.append(f"{path}: {message}")
@@ -577,8 +579,13 @@ class AuditValidator:
             order = self.require_list(check.get("options_order"), f"{check_path}.options_order")
             if len(order) != len(ids) or set(order) != ids:
                 self.error(f"{check_path}.options_order", "must list every stable option ID exactly once")
-            if index == 1 and check.get("options_reordered") is not True:
-                self.error(f"{check_path}.options_reordered", "second blind check must use reordered options")
+            if index == 1:
+                if check.get("options_reordered") is not True:
+                    self.error(f"{check_path}.options_reordered", "second blind check must use reordered options")
+                original_order = [option.get("option_id") for option in options if isinstance(option, dict)]
+                first_order = checks[0].get("options_order") if isinstance(checks[0], dict) else None
+                if order == original_order or order == first_order:
+                    self.error(f"{check_path}.options_order", "second blind check order must differ from both original and first solver order")
             self.validate_review_context(check.get("review_context"), f"{check_path}.review_context", candidate.get("verdict"))
 
         final = self.require_object(candidate.get("final_judge"), f"{path}.final_judge")
@@ -633,12 +640,24 @@ class AuditValidator:
 
     def validate_review_context(self, value: Any, path: str, verdict: Any) -> None:
         context = self.require_object(value, path)
-        self.require_keys(context, path, {"isolation_method", "isolation_verified", *ISOLATION_FALSE_FIELDS})
-        if context.get("isolation_method") != "fresh_reviewer_context":
-            self.error(f"{path}.isolation_method", "must be fresh_reviewer_context")
+        self.require_keys(context, path, {"isolation_method", "isolation_verified", "agent_id", "history_inherited", *ISOLATION_FALSE_FIELDS})
+        if context.get("isolation_method") != "fresh_subagent":
+            self.error(f"{path}.isolation_method", "must be fresh_subagent")
+        if context.get("history_inherited") is not False:
+            self.error(f"{path}.history_inherited", "must be false; start without inherited conversation history")
+        agent_id = context.get("agent_id")
+        if isinstance(agent_id, str) and agent_id.strip():
+            if agent_id in self.review_agents:
+                self.error(f"{path}.agent_id", f"must be unique to this review call; already used at {self.review_agents[agent_id]}")
+            else:
+                self.review_agents[agent_id] = path
+        elif not (agent_id is None and verdict != "pass" and context.get("isolation_verified") is False):
+            self.error(f"{path}.agent_id", "must be a non-empty actual subagent ID; null is allowed only for an unverified nonpassing review")
         for field in ISOLATION_FALSE_FIELDS:
             if context.get(field) is not False:
                 self.error(f"{path}.{field}", "must be false")
+        if context.get("isolation_verified") is False:
+            self.unverified_reviews.append(path)
         if verdict == "pass" and context.get("isolation_verified") is not True:
             self.error(f"{path}.isolation_verified", "must be true for an automated pass")
         elif not isinstance(context.get("isolation_verified"), bool):
@@ -866,6 +885,11 @@ class AuditValidator:
             if item.get("status") not in {"resolved", "unresolved"}:
                 self.error(f"{path}.status", "must be resolved or unresolved")
             unresolved = unresolved or item.get("status") == "unresolved"
+        if self.unverified_reviews:
+            if not unresolved:
+                self.error("$.escalations", "unverified independent reviews require an unresolved escalation")
+            if root.get("workflow_status") != "draft":
+                self.error("$.workflow_status", "unverified independent reviews block final approval and delivery")
         if root.get("workflow_status") == "approved_for_delivery" and unresolved:
             self.error("$.escalations", "approved delivery cannot contain unresolved escalations")
 
@@ -896,9 +920,11 @@ def candidate_prompt_text(candidate: dict[str, Any]) -> str:
     return str(item.get("stem") or item.get("prompt") or "")
 
 
-def review_context() -> dict[str, Any]:
+def review_context(agent_id: str) -> dict[str, Any]:
     return {
-        "isolation_method": "fresh_reviewer_context",
+        "isolation_method": "fresh_subagent",
+        "agent_id": agent_id,
+        "history_inherited": False,
         "isolation_verified": True,
         "key_visible": False,
         "prior_verdicts_visible": False,
@@ -935,7 +961,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
                 "options_order": ["opt-1", "opt-2", "opt-3"],
                 "options_reordered": False,
                 "justification": "The supported rule is the only option consistent with the case.",
-                "review_context": review_context(),
+                "review_context": review_context(f"fixture-{cid}-S1"),
             },
             {
                 "reviewer_id": f"{cid}-S2",
@@ -943,14 +969,14 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
                 "options_order": ["opt-3", "opt-1", "opt-2"],
                 "options_reordered": True,
                 "justification": "The same stable option remains correct after reordering.",
-                "review_context": review_context(),
+                "review_context": review_context(f"fixture-{cid}-S2"),
             },
         ]
         final_judge = {
             "verdict": "pass",
             "selected_option_id": key,
             "justification": "The item is grounded, aligned, and has one supported answer.",
-            "review_context": review_context(),
+            "review_context": review_context(f"fixture-{cid}-final"),
         }
         bloom = "Apply"
     else:
@@ -979,7 +1005,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             "verdict": "pass",
             "scoring_expectations_supported": True,
             "justification": "The prompt and rubric elicit observable evaluation evidence.",
-            "review_context": review_context(),
+            "review_context": review_context(f"fixture-{cid}-final"),
         }
         bloom = "Evaluate"
     return {
@@ -1005,7 +1031,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
         "estimated_difficulty": "Medium",
         "difficulty_fit": "pass",
         "difficulty_justification": "The task requires two linked steps with limited integration.",
-        "classification_review_context": review_context(),
+        "classification_review_context": review_context(f"fixture-{cid}-classification"),
         "classification_revealed_before_target_comparison": True,
         "duplication": {
             "same_position_overlap": "expected",
@@ -1282,6 +1308,84 @@ def run_self_tests() -> int:
     bad["workflow_status"] = "approved_for_delivery"
     tests.append(("mandatory final instructor approval", bad, False))
 
+    for role, context_path in (
+        ("classification", ("classification_review_context",)),
+        ("solver", ("blind_answer_checks", 0, "review_context")),
+        ("final judge", ("final_judge", "review_context")),
+    ):
+        for field, value in (("agent_id", None), ("agent_id", ""), ("history_inherited", True),
+                             ("isolation_method", "fresh_reviewer_context")):
+            bad = valid_fixture()
+            context = bad["candidates"][0]
+            for component in context_path:
+                context = context[component]
+            context[field] = value
+            tests.append((f"{role} rejects {field}={value!r}", bad, False))
+
+    bad = valid_fixture()
+    del bad["candidates"][0]["classification_review_context"]["agent_id"]
+    tests.append(("missing subagent ID field", bad, False))
+
+    bad = valid_fixture()
+    candidate = bad["candidates"][0]
+    candidate["final_judge"]["review_context"]["agent_id"] = candidate["classification_review_context"]["agent_id"]
+    tests.append(("subagent reused across roles within candidate", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][1]["classification_review_context"]["agent_id"] = bad["candidates"][0]["classification_review_context"]["agent_id"]
+    tests.append(("subagent reused across candidates", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["blind_answer_checks"][1]["options_order"] = ["opt-1", "opt-2", "opt-3"]
+    tests.append(("unchanged option order despite reordered flag", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["blind_answer_checks"][0]["options_order"] = ["opt-3", "opt-1", "opt-2"]
+    tests.append(("second solver repeats first shuffled order", bad, False))
+
+    bad = valid_fixture()
+    bad["schema_version"] = "2026.2"
+    bad["metadata"]["release"] = "2026.2"
+    bad["metadata"]["manifest_version"] = "2026.2.0"
+    tests.append(("2026.2 audit is not silently upgraded", bad, False))
+
+    bad = valid_fixture()
+    bad["workflow_status"] = "approved_for_delivery"
+    bad["instructor_approval"]["final"] = {"status": "approved", "approved_by": "instructor", "approved_at": "2026-09-07T12:00:00+02:00"}
+    bad["candidates"][0]["classification_review_context"]["isolation_verified"] = False
+    bad["candidates"][0]["classification_review_context"]["agent_id"] = None
+    tests.append(("instructor approval cannot replace independent review", bad, False))
+
+    # An unperformed review is representable without inventing an agent identity.
+    # This candidate is not selected; existing passed candidates still cover the blueprint.
+    good = valid_fixture()
+    reviewed = good["candidates"][1]
+    reviewed["verdict"] = "manual_review"
+    reviewed["final_status"] = "independent_review_required"
+    reviewed["classification_review_context"]["isolation_verified"] = False
+    reviewed["classification_review_context"]["agent_id"] = None
+    good["candidates"][2]["exemplar_context"]["accepted_run_ids"] = ["BP-01-C1"]
+    good["candidates"][2]["exemplar_context"]["rejected_run_ids"] = ["BP-01-C2"]
+    good["candidates"][3]["exemplar_context"]["accepted_run_ids"] = ["BP-01-C1", "BP-02-C1"]
+    good["candidates"][3]["exemplar_context"]["rejected_run_ids"] = ["BP-01-C2"]
+    good["exemplar_registries"]["run_exemplars"]["accepted"] = [run_exemplar_entry(good["candidates"][i]) for i in (0, 2, 3)]
+    good["exemplar_registries"]["run_exemplars"]["rejected"] = [run_exemplar_entry(reviewed)]
+    good["workflow_status"] = "draft"
+    good["escalations"] = [{"escalation_id": "E-1", "reason": "Classification subagent unavailable.", "status": "unresolved"}]
+    tests.append(("unperformed nonpassing review has null agent ID", good, True))
+
+    bad = copy.deepcopy(good)
+    bad["candidates"][1]["classification_review_context"]["agent_id"] = bad["candidates"][2]["classification_review_context"]["agent_id"]
+    tests.append(("nonpassing review cannot lend its subagent to a later passing review", bad, False))
+
+    bad = copy.deepcopy(good)
+    bad["escalations"] = []
+    tests.append(("unverified review requires unresolved escalation", bad, False))
+
+    bad = copy.deepcopy(good)
+    bad["workflow_status"] = "awaiting_final_approval"
+    tests.append(("unverified review blocks final approval request", bad, False))
+
     failures = 0
     for name, fixture, expected_valid in tests:
         errors = AuditValidator(fixture).validate()
@@ -1298,7 +1402,7 @@ def run_self_tests() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.2 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.3 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1322,7 +1426,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.2 structure and invariants passed.")
+        print("Audit valid: declared 2026.3 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

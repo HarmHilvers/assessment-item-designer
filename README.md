@@ -44,7 +44,7 @@ Each completed assessment produces:
 
 Installation depends on your AI application. The [Agent Plugins standard](https://agent-plugins.org/plugin-authors/build-an-agent-plugin) defines a portable package format, while installation and distribution remain application-specific.
 
-This repository currently provides a Codex plugin manifest at `.codex-plugin/plugin.json` and a standalone skill under `skills/assessment-item-designer/`. It does not yet include the root `plugin.json` required by the portable Agent Plugins format. The instructions below install the skill in Codex; they are not a universal plugin installation command.
+This repository currently provides a Codex plugin manifest at `.codex-plugin/plugin.json` and a standalone skill under `skills/assessment-item-designer/`. The instructions below install the skill in Codex; they are not a universal plugin installation command.
 
 Install with Codex's built-in skill installer:
 

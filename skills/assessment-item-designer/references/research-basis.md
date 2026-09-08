@@ -6,7 +6,7 @@ This plugin credits the paper supplied with its design brief and the accompanyin
 
 > Isley, C. et al. (2025). *Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study*. arXiv:2508.08314v1.
 
-- Supplied paper: `2508.08314v1.pdf`
+- Reviewed paper version: arXiv:2508.08314v1, especially §3.1 and §4.3
 - Paper identifier: <https://arxiv.org/abs/2508.08314>
 - Replication repository: <https://github.com/calisley/ai_exams>
 
@@ -36,12 +36,17 @@ This is an extension of Isley et al.'s iterative generation-and-judging architec
 - deterministic validation and stable IDs;
 - position-aware conceptual duplication rules;
 - bounded candidate generation and revision;
-- FIFO run-exemplar memory rather than retaining the paper's first five run examples;
+- independent FIFO windows for accepted, revisable and rejected examples rather than the paper's first-five good/bad examples;
+- explicit uncertainty and basis for pre-administration difficulty estimates;
 - support for essay questions, answer outlines, and analytic rubrics;
 - mandatory instructor approval gates;
 - final selection based on exact blueprint coverage rather than selection of the hardest candidates.
 
-The paper selected its hardest judged candidates as a pragmatic response to generated questions being too easy. This plugin does not reproduce that rule. It follows the approved targets for learning outcomes, Bloom level, difficulty, item type, and points.
+The paper's §3.1 describes generating 20 accepted items and selecting the ten judged hardest after a further review. Its §4.3 reports that generated items were nevertheless empirically easier than the standardized comparison items. This plugin therefore treats Easy/Medium/Hard and confidence as pre-administration design estimates, not psychometric measurements. An uncertain adjacent-category difference can be retained for instructor review; substantive mismatches require resolution. It selects against approved targets rather than simply maximizing predicted difficulty.
+
+The accepted/revisable/rejected memory semantics are our extension. `revise` preserves a useful concept while identifying a correctable defect; it is not a generic bad example. Unresolved human-review cases are excluded from generation memory. An immutable judgment history preserves what was known before each generation call, including later revisions and human resolutions.
+
+All candidates still use separate independent classification and final reviewers; MCQs additionally use two blind answer solvers. The paper does not validate this particular isolation architecture, three-category memory, confidence policy or their effect on assessment quality.
 
 ## Empirical scope
 
@@ -58,7 +63,7 @@ The study names open-response questions as a possible future extension. Do not c
 
 Model-estimated difficulty is a pre-administration judgment, not an empirical calibration. IRT difficulty is estimated from student-response data. The two must remain distinct in language and audit fields. The finding that generated items were empirically easier also cautions against treating a model's difficulty label as measurement evidence.
 
-Release 2026.5 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses.
+Release 2026.6 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses.
 
 ## MCQ item-writing evidence
 
@@ -74,7 +79,7 @@ The three-option recommendation is a default against padding, not a claim that e
 
 ## Repository reuse and licensing
 
-At packaging time for release 2026.2, the Isley et al. replication repository root exposed no visible `LICENSE` file. Absence of a license is not permission to copy copyrighted material.
+At initial packaging time, the Isley et al. replication repository root exposed no visible `LICENSE` file. Absence of a license is not permission to copy copyrighted material.
 
 Therefore:
 

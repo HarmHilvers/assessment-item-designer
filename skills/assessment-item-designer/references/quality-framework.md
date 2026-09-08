@@ -10,7 +10,7 @@ For each candidate, use four distinct fresh subagents for MCQs (classification, 
 
 The coordinator constructs minimal review packets rather than passing the complete candidate, audit, skill, or conversation. Reviewers must use only their supplied packet, must not inspect workspace files or contact other agents, and must return a result plus a concise observable justification. A shared workspace is not a security sandbox: if prohibited information is accessed or history inheritance cannot be ruled out, mark isolation unverified. Do not claim technical access isolation merely because a separate agent was started.
 
-- Classification: item prompt/stem, options when present, and permitted resources only. No answer outline, rubric, keys, rationales, exemplar memory, target labels, or prior results. Return Bloom and difficulty judgments before the coordinator compares them with targets.
+- Classification: item prompt/stem, options when present, and permitted resources only. No answer outline, rubric, keys, rationales, exemplar memory, target labels, or prior results. Return Bloom, estimated difficulty, confidence and a concise basis before the coordinator compares them with targets. Approved historical or calibration items may inform difficulty after Bloom is fixed; redact keys and target labels for the current candidate and do not reveal run-exemplar verdicts. Cite comparator source locators in the difficulty basis; comparators never expand scope.
 - Answer solvers: stem, stable option IDs and text, and permitted resources only. Solver 2 receives an order different from both the displayed original and solver 1. Return the chosen option ID and a short answer justification.
 - Final judge: item, permitted resources, relevant authorized grounding evidence, and the approved position's scope, outcome, points and constraints. Remove target Bloom/difficulty labels and all keys, answer outlines, rubrics, rationales, exemplar memory, and earlier results. For essays, independently establish scoring expectations; the coordinator then checks the generated outline and rubric against those expectations.
 
@@ -141,7 +141,7 @@ Reject criteria that grade personality, effort, polish unrelated to the outcome,
 Use a fresh classification subagent under the execution contract above. The reviewer sees the item and permitted resources but not target labels, generator metadata, rationales, previous verdicts, revision history, or exemplar memory. It first records:
 
 - `reviewed_bloom` and a concise observable justification;
-- `estimated_difficulty` and a concise observable justification.
+- `estimated_difficulty`, `difficulty_confidence`, `difficulty_basis` and a concise observable justification. Confidence is an uncalibrated design judgment, not an empirical probability.
 
 Only after those fields are fixed may another comparison set `bloom_fit` and `difficulty_fit`. Follow `bloom-framework.md`. A declared target cannot serve as evidence that the target was met.
 
@@ -186,11 +186,19 @@ The audit must state the normalization method. A recommended minimum is lowercas
 
 For each position, generate candidate 1, judge it, update run memory, and only then generate candidate 2. Apply the same generate–judge–refresh cycle to each replacement. Never generate two same-position candidates in one model call.
 
-After each candidate is judged, retain a bounded exemplar memory of accepted and rejected candidates. Subsequent generation calls must receive up to five accepted and five rejected examples with their verdicts, so that judge decisions influence later generation.
+Use three independent rolling FIFO windows, each capped at five, ordered from oldest to newest:
 
-`calibration_exemplars` are fixed, optional, instructor-approved, and limited to five. They calibrate quality and form only; they cannot authorize a concept that is absent from the approved scope.
+- **accepted (`pass`)**: patterns worth emulating;
+- **revisable (`revise`)**: preserve the useful core (`retain`) and avoid or repair the identified defect (`correct`). A distractor or wording defect does not make an authorized concept undesirable;
+- **rejected (`reject`)**: patterns or approaches to avoid, supported by a concise reason.
 
-`run_exemplars` use rolling FIFO retention with a maximum of five accepted and five rejected entries. Store candidate ID, compact item representation, type, assessed concepts, position, verdict, and concise justification. FIFO retention is a deliberate departure from the paper's first-five approach.
+Unresolved `manual_review` candidates enter none of these windows. The coordinator still records that their judgment occurred; this is process state, not a negative training example. A human can later resolve the verdict to pass, revise or reject with recorded provenance, provided the full item content is unchanged. A changed distractor, answer rationale or rubric requires a new revision and fresh independent reviews. Such a resolution cannot waive grounding, mandatory independent review or other pass requirements.
+
+Append judgments to `exemplar_registries.judgment_history`. New candidates, revised versions and human resolutions are separate immutable events. When a candidate receives a new verdict, remove its superseded entry from any retained window and append its current version to the appropriate window (or none for manual_review). Evict the oldest entry only when that category exceeds five. Never retroactively alter earlier generation packets or recategorize their historical examples.
+
+Each generation call receives the exact windows as they stood immediately before generation. For a new candidate, record that history boundary in `exemplar_context.after_event_index`. For revisions, reconstruct the input windows from the prefix immediately before the new revision's judgment event. Preserve each event's complete item snapshot, summary, feedback and verdict so later mutation of the candidate cannot rewrite the earlier evidence. Generate and judge sequentially; no intervening judgment may occur between a generation call and its verdict.
+
+`calibration_exemplars` are fixed, optional, instructor-approved and limited to five. They can inform form, quality and difficulty but cannot authorize an out-of-scope concept. Supply this registry alongside all three run-memory windows. FIFO and the revisable category are extensions of the paper's first-five good/bad examples. See `output-contract.md` for the canonical audit fields.
 
 ## 8. Blind MCQ answer checks
 
@@ -231,10 +239,10 @@ The final judge determines whether the item is valid and identifies its answer o
 
 Candidate verdicts are `pass`, `revise`, `reject`, or `manual_review`.
 
-- `pass` (**GOOD**): all critical criteria are satisfied, isolation is verified, and no unresolved manual check remains.
+- `pass` (**GOOD**): all critical criteria and Bloom fit are satisfied, isolation is verified, and no unresolved manual check remains. Difficulty may be `aligned` or `adjacent_uncertain`; the latter must be disclosed during final instructor review.
 - `revise` (**REVISE**): the learning objective and core question are valid, but a correctable stem or option defect exists and revision budget remains.
 - `reject` (**REJECT**): alignment or cognitive level is wrong; the item is ambiguous; multiple answers are defensible; no answer is correct; distractors are predominantly implausible; strong unintended cues remain; or an exhausted candidate path makes revision inappropriate.
-- `manual_review`: an instructor must decide, for substantive issues such as lexical similarity of at least 0.85 without an approved resolution. Missing subagent isolation remains blocked until fresh independent reviews complete; a manual decision cannot waive it.
+- `manual_review`: an instructor must decide, for substantive issues such as lexical similarity of at least 0.85 without an approved resolution, or a difficulty disposition requiring review. Missing subagent isolation remains blocked until fresh independent reviews complete; a manual decision cannot waive it.
 
 Allow two initial candidates plus at most two fresh replacements per position, and at most two revisions per candidate. Escalate after exhaustion. A replacement is a fresh candidate, not revision number three.
 

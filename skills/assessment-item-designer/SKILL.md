@@ -8,7 +8,7 @@ license: MIT
 
 Requires fresh subagents without inherited task history, file read/write access, and Python 3.9 or newer.
 
-Release designation: **2026.5**. Manifest version: **2026.5.0**.
+Release designation: **2026.6**. Manifest version: **2026.6.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -85,8 +85,8 @@ For review of an existing assessment without a blueprint, first construct a `pro
 
 Maintain two distinct registries:
 
-- `calibration_exemplars`: optional, fixed for the run, instructor-approved, maximum five. They calibrate form and quality only and cannot expand content scope.
-- `run_exemplars`: rolling FIFO memory, maximum five accepted and five rejected candidates. Each entry includes the item, type, concepts, position, verdict, and a short observable justification.
+- `calibration_exemplars`: optional, fixed for the run, instructor-approved, maximum five. They inform form, quality and difficulty estimates without expanding content scope.
+- `run_exemplars`: independent rolling FIFO windows of at most five accepted (`pass`), five revisable (`revise`), and five rejected (`reject`) examples. Accepted patterns are worth emulating; revisable examples retain a useful core while identifying a defect to correct; rejected approaches should be avoided. Unresolved `manual_review` candidates are excluded. Follow the canonical memory rules in `quality-framework.md` and journal format in `output-contract.md`.
 
 Supply both registries to each generation call. FIFO run memory is an explicit departure from the paper's first-five run examples.
 
@@ -110,7 +110,7 @@ Budgets per position:
 
 Do not hide budget exhaustion by renaming a revision or restarting a position.
 
-Every candidate must record its position, evidence, scenario origin, assessed concepts, `concept_signature`, targets, independent review results, fit results, overlap results, exemplar context, reviewer-context declarations, revision and replacement counts, verdict, and selection status.
+Every candidate must record its position, evidence, scenario origin, assessed concepts, `concept_signature`, targets, independent review results, fit results, difficulty confidence and basis, overlap results, exemplar context, reviewer-context declarations, revision and replacement counts, verdict, and selection status. Append each judgment or human resolution to the immutable judgment history before refreshing memory.
 
 MCQs default to three strong options with stable `option_id` values, exactly one keyed option, an answer rationale, and one misconception rationale for each distractor. Use more than three options only when every distractor is genuinely plausible or the approved blueprint requires it; never pad an item with weak distractors. Essays contain an answer outline, defensible alternatives, an observable analytic rubric with reconciled points, and a notice that the essay workflow is not empirically validated by Isley et al. (2025).
 
@@ -125,7 +125,7 @@ Run distinct review passes described in `quality-framework.md`:
 5. two isolated blind answer checks for MCQs;
 6. separate final judge.
 
-The Bloom/difficulty reviewer must not see targets or generator metadata. Reveal `reviewed_bloom` and `estimated_difficulty` before comparing them with targets and setting `bloom_fit` and `difficulty_fit`.
+The Bloom/difficulty reviewer must not see targets or generator metadata. Fix `reviewed_bloom`, `estimated_difficulty`, `difficulty_confidence` and `difficulty_basis` before comparing them with targets. Keep Bloom fit independent from the difficulty policy in `bloom-framework.md`; adjacent uncertainty is not a substantive quality failure.
 
 The two MCQ answer solvers see only stem, options, and permitted resources. Solver 2 receives reordered options. Compare conclusions using stable `option_id`, never letters. The final judge is key-blind and history-blind. Record the required `review_context` declaration for every isolated pass.
 
@@ -144,7 +144,7 @@ Select one passed candidate for every approved blueprint position. Then run a fr
 5. rerun the entire selected-set duplication pass;
 6. escalate when no valid replacement exists.
 
-Finally verify exact blueprint coverage, Bloom distribution, difficulty distribution, item types, resources, and points. Validate `quality-audit.json` with `scripts/validate_audit.py`. Validation checks declared structure and invariants; it does not prove semantic judgments true.
+Finally verify exact blueprint coverage, Bloom distribution, intended difficulty distribution, item types, resources, and points. Report model-estimated difficulty separately and flag selected adjacent-category uncertainties to the instructor; never imply an empirically verified difficulty distribution. Validate `quality-audit.json` with `scripts/validate_audit.py`. Validation checks declared structure and invariants; it does not prove semantic judgments true.
 
 ## Stage 7 — Instructor approval and delivery
 
@@ -157,7 +157,7 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.5`, manifest version `2026.5.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.6`, manifest version `2026.6.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

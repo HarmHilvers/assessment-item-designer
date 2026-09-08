@@ -2,7 +2,7 @@
 
 Assessment Item Designer is an Agent Plugin that helps instructors, professors, and examinators create and review multiple-choice and essay questions grounded in learning outcomes and course materials. It combines assessment blueprints, independent AI review, and instructor approval to support alignment, clarity, and answer quality.
 
-Release **2026.5** uses manifest version **2026.5.0**.
+Release **2026.6** uses manifest version **2026.6.0**.
 
 ## What it does
 
@@ -11,7 +11,7 @@ The plugin helps instructors move from course materials and learning outcomes to
 - assessment blueprints with stable item positions;
 - revised Bloom targets and independent Bloom review;
 - separate target and estimated difficulty fields;
-- sequential candidate generation with accepted and rejected exemplars;
+- sequential generation informed by accepted, revisable and rejected examples;
 - position-aware conceptual and lexical duplication checks;
 - isolated, key-blind answer verification for multiple-choice questions;
 - answer outlines and analytic rubrics for essay questions;
@@ -29,7 +29,9 @@ The instructions and audit keys are English. Generated assessments may use anoth
 4. **Assemble the assessment.** Select questions that pass the required checks, review the complete set for duplication, and verify coverage, points and answer-key consistency.
 5. **Give final approval.** Review the assessment and separate answer key before approving them for use. Unresolved quality checks must be completed first.
 
-Bloom levels are based on the work a student must actually perform. A fixed-response multiple-choice question cannot demonstrate `Create`. Estimated difficulty is a design judgment before administration; measuring actual item difficulty requires student-response data.
+Examples marked for revision retain their useful core while identifying the defect to fix; unresolved reviews are kept out of generation memory.
+
+Bloom levels are based on the work a student must actually perform. A fixed-response multiple-choice question cannot demonstrate `Create`. Estimated difficulty includes uncertainty and its basis. A small, uncertain difference from the target need not discard an otherwise sound question, but is flagged for instructor review. Measuring actual item difficulty requires student-response data.
 
 ## Outputs
 
@@ -75,7 +77,7 @@ The design credits:
 
 The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure, its use of accepted and rejected examples, and a separate final judging stage. It extends that procedure with assessment blueprints, revised Bloom classification, evidence requirements, blind answer verification, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.5 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.6 does not reproduce post-administration psychometric validation.
 
 The MCQ quality gate additionally draws on:
 

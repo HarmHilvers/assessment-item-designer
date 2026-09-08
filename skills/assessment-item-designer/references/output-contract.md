@@ -29,7 +29,7 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.5",
+  "schema_version": "2026.6",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
   "blueprint": {},
@@ -48,8 +48,8 @@ Required fields:
 
 ```json
 {
-  "release": "2026.5",
-  "manifest_version": "2026.5.0",
+  "release": "2026.6",
+  "manifest_version": "2026.6.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {
@@ -58,6 +58,8 @@ Required fields:
     "direct_empirical_scope": "short college-level multiple-choice items",
     "essay_workflow_empirically_validated": false,
     "model_difficulty_is_irt": false,
+    "model_difficulty_is_empirical": false,
+    "difficulty_confidence_empirically_calibrated": false,
     "post_administration_psychometrics_included": false
   }
 }
@@ -107,12 +109,36 @@ Required structure:
   "run_exemplars": {
     "retention_policy": "rolling_fifo",
     "accepted": [],
+    "revisable": [],
     "rejected": []
-  }
+  },
+  "judgment_history": []
 }
 ```
 
-There may be at most five calibration examples, five retained accepted examples, and five retained rejected examples. Each run entry contains `candidate_id`, `item_summary`, `item_type`, `assessed_concepts`, `blueprint_position_id`, `verdict`, and `justification`.
+There may be at most five calibration examples and five retained entries in each run category. The semantics are defined in `quality-framework.md` §7. Each generation call receives the fixed calibration registry and all three FIFO windows.
+
+`judgment_history` is an append-only array of review events, in actual judgment order. Each event contains:
+
+```json
+{
+  "event_index": 1,
+  "candidate_id": "BP-01-C1",
+  "revision_count": 0,
+  "verdict": "revise",
+  "item_summary": "The complete stem or prompt at this judgment",
+  "item_snapshot": {},
+  "justification": "One distractor is implausible.",
+  "retain": "The grounded application and scenario are useful.",
+  "correct": "Replace the implausible distractor with a realistic misconception."
+}
+```
+
+Indices are contiguous from one. Each candidate starts at revision zero; a revised item advances one revision, to at most two. `retain` and `correct` are mandatory for revise events and each contain 1–500 characters. The summary preserves the stem/prompt. `item_snapshot` is a deep copy of the full `item` object for that version, including options/keys or essay outline/rubric (the empty object above is only a schema placeholder). This snapshot allows historical examples to retain their original content after a distractor or scoring expectation changes. It is audit/generator data and must never be passed wholesale to blind reviewers. The last event must match the candidate's current verdict, revision and complete item.
+
+A same-revision event is permitted only to resolve a previous `manual_review` into pass, revise or reject. It requires `human_resolution` containing non-empty `resolved_by`, `resolved_at` and `justification`. The full item snapshot must be unchanged, including answer options and rationales. This must not bypass the candidate's independent-review or other pass controls. Do not rewrite earlier events after resolution.
+
+For each event, remove that candidate's superseded entry from all retained windows. Append pass to accepted, revise to revisable, reject to rejected; manual_review enters none. Keep the last five entries of each category in event order. A run entry is the event's `event_index`, `candidate_id`, `revision_count`, `verdict`, `item_summary` and `justification`, plus the candidate's `item_type`, `assessed_concepts` and `blueprint_position_id`; revise entries also copy `retain` and `correct`. The validator reconstructs and compares exact windows and feedback. The generator resolves each entry's event index to the immutable item snapshot when reading its example; do not read historical examples from the mutable current candidate.
 
 ### Generation budget
 
@@ -153,7 +179,9 @@ Each record requires:
   "bloom_justification": "...",
   "target_difficulty": "Medium",
   "estimated_difficulty": "Medium",
-  "difficulty_fit": "pass",
+  "difficulty_fit": "aligned",
+  "difficulty_confidence": "medium",
+  "difficulty_basis": "Two linked steps; familiarity is assumed rather than measured.",
   "difficulty_justification": "...",
   "classification_review_context": {},
   "classification_revealed_before_target_comparison": true,
@@ -174,9 +202,9 @@ For `item_type: mcq`, `item` contains `stem`, `options`, `correct_option_id`, an
 
 For `item_type: essay`, `item` contains `prompt`, `answer_outline`, `defensible_alternatives`, `rubric`, and `empirical_limitation_notice`. Each rubric criterion has `criterion_id`, `criterion`, `max_points`, and observable `levels`; criterion maxima must equal the blueprint position points.
 
-Targets and review results are always separate. Use revised Bloom values `Remember`, `Understand`, `Apply`, `Analyze`, `Evaluate`, or `Create`; an MCQ cannot be `Create`. Difficulty values are `Easy`, `Medium`, or `Hard`. Fits are `pass` or `fail`.
+Targets and review results are always separate. Use revised Bloom values `Remember`, `Understand`, `Apply`, `Analyze`, `Evaluate`, or `Create`; an MCQ cannot be `Create`. Difficulty values are `Easy`, `Medium`, or `Hard`. Bloom fit is `pass | fail`. Difficulty fit is `aligned | adjacent_uncertain | review_required | mismatch`, following the canonical comparison table in `bloom-framework.md`. Difficulty confidence is `low | medium | high`; basis is a non-empty string of at most 500 characters. None is an empirical parameter.
 
-`classification_review_context` uses the isolated context declaration below. `classification_revealed_before_target_comparison: true` declares that `reviewed_bloom` and `estimated_difficulty` were recorded before the targets were revealed and fit was calculated. A passing candidate requires both fit fields to pass. A non-passing candidate may retain different reviewed and target values as evidence of a genuine independent review.
+`classification_review_context` uses the isolated context declaration below. `classification_revealed_before_target_comparison: true` declares that `reviewed_bloom`, `estimated_difficulty`, confidence and basis were recorded before the targets were revealed and fit was calculated. A passing candidate requires Bloom fit `pass` and difficulty fit `aligned` or `adjacent_uncertain`. A non-passing candidate may retain different reviewed and target values as evidence of a genuine independent review.
 
 `duplication` contains:
 
@@ -195,7 +223,9 @@ Targets and review results are always separate. Use revised Bloom values `Rememb
 
 Same-position `expected` does not fail solely for construct overlap. Same-position `excessive`, exact duplication, or an equivalent solution route must not receive an automated pass. Cross-position `substantive` must not pass unless blueprint repetition is authorized and the audit records `materially_distinct_cognition_or_evidence: true`. Similarity at or above `0.85` requires a resolved manual review.
 
-`exemplar_context` contains `calibration_ids`, `accepted_run_ids`, `rejected_run_ids`, and `preceding_same_position_candidate_id`. Candidate 1 uses `null` for the preceding candidate. Each later same-position candidate must name the immediately preceding one, and that ID must occur in its accepted or rejected run IDs. Lists are capped at five each.
+`exemplar_context` contains `calibration_ids`, `accepted_run_ids`, `revisable_run_ids`, `rejected_run_ids`, `preceding_same_position_candidate_id` and `after_event_index`. The IDs are ordered oldest to newest; each list is bounded at five. `after_event_index` identifies the complete history prefix immediately before this candidate's first judgment (zero initially). The three lists must match that prefix's FIFO windows exactly, and calibration IDs must equal the approved fixed registry.
+
+The first candidate for a position has preceding ID `null`; subsequent candidates identify the immediately preceding candidate for that position. Generation follows the preceding global candidate's judgment. The preceding candidate's example appears in its appropriate FIFO window if retained; an unresolved manual_review is referenced only by the process-history pointer, never injected as a negative example. Historical membership is determined by events at the boundary, not by the candidate's eventual verdict. For a revision, its generation packet is reconstructed from the prefix immediately before the revision event. No intervening generation/judgment is permitted within a generate–judge cycle.
 
 Each entry in `rejection_checks` contains `criterion`, `result: pass | fail | not_applicable`, and `justification`. Use these required criterion IDs:
 
@@ -268,13 +298,14 @@ Required structure:
   "blueprint_coverage_verified": true,
   "bloom_distribution_verified": true,
   "difficulty_distribution_verified": true,
+  "difficulty_caveat_candidate_ids": [],
   "item_type_distribution_verified": true,
   "points_verified": true,
   "answer_key_membership_verified": true
 }
 ```
 
-Select exactly one passing candidate per position. Selected-set comparison entries contain both candidate and position IDs, `cross_position_overlap`, lexical similarity, repetition authorization, `materially_distinct_cognition_or_evidence`, disposition, and justification. A substantive comparison fails unless repetition is authorized and material distinction is true. Similarity at or above `0.85` requires a recorded, resolved manual disposition.
+Select exactly one passing candidate per position. `difficulty_distribution_verified` confirms intended blueprint coverage and reporting of estimates, not measured difficulty. `difficulty_caveat_candidate_ids` lists exactly the selected `adjacent_uncertain` candidates, in selection order; disclose these caveats before final instructor approval. Selected-set comparison entries contain both candidate and position IDs, `cross_position_overlap`, lexical similarity, repetition authorization, `materially_distinct_cognition_or_evidence`, disposition, and justification. A substantive comparison fails unless repetition is authorized and material distinction is true. Similarity at or above `0.85` requires a recorded, resolved manual disposition.
 
 Every replacement must append a history entry and increment `run_count`; rerun all selected-set comparisons, not only the changed pair.
 
@@ -300,6 +331,10 @@ Every replacement must append a history entry and increment `run_count`; rerun a
 ### Compact, observable audit text
 
 Justifications should be one or two short sentences and normally no more than 500 characters. Do not include fields named `chain_of_thought`, `reasoning_trace`, `internal_reasoning`, or equivalents. Store criteria, observations, source locators, verdicts, and concise explanations only.
+
+## Schema version
+
+Release/schema 2026.6 uses manifest version 2026.6.0. Earlier audit schemas are rejected without automatic migration; their memory and difficulty semantics must not be silently relabeled.
 
 ## Deterministic validation boundary
 

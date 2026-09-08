@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.5 audit declarations.
+"""Validate Assessment Item Designer 2026.6 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,11 +20,13 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.5"
-MANIFEST_VERSION = "2026.5.0"
+RELEASE = "2026.6"
+MANIFEST_VERSION = "2026.6.0"
 BLOOM = {"Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"}
 DIFFICULTY = {"Easy", "Medium", "Hard"}
 FITS = {"pass", "fail"}
+MEMORY_BUCKETS = {"accepted": "pass", "revisable": "revise", "rejected": "reject"}
+DIFFICULTY_FITS = {"aligned", "adjacent_uncertain", "review_required", "mismatch"}
 VERDICTS = {"pass", "revise", "reject", "manual_review"}
 FINAL_STATUSES = {
     "selected",
@@ -163,6 +165,8 @@ class AuditValidator:
                 "direct_empirical_scope",
                 "essay_workflow_empirically_validated",
                 "model_difficulty_is_irt",
+                "difficulty_confidence_empirically_calibrated",
+                "model_difficulty_is_empirical",
                 "post_administration_psychometrics_included",
             },
         )
@@ -173,6 +177,8 @@ class AuditValidator:
             "extension_not_replication": True,
             "essay_workflow_empirically_validated": False,
             "model_difficulty_is_irt": False,
+            "difficulty_confidence_empirically_calibrated": False,
+            "model_difficulty_is_empirical": False,
             "post_administration_psychometrics_included": False,
         }
         for key, wanted in expected.items():
@@ -242,7 +248,7 @@ class AuditValidator:
 
     def validate_exemplar_registries(self, value: Any) -> None:
         obj = self.require_object(value, "$.exemplar_registries")
-        self.require_keys(obj, "$.exemplar_registries", {"calibration_exemplars", "run_exemplars"})
+        self.require_keys(obj, "$.exemplar_registries", {"calibration_exemplars", "run_exemplars", "judgment_history"})
         calibration = self.require_list(obj.get("calibration_exemplars"), "$.exemplar_registries.calibration_exemplars")
         if len(calibration) > 5:
             self.error("$.exemplar_registries.calibration_exemplars", "cannot exceed five")
@@ -262,10 +268,10 @@ class AuditValidator:
                 self.error(f"{path}.scope_expansion_allowed", "must be false")
 
         run = self.require_object(obj.get("run_exemplars"), "$.exemplar_registries.run_exemplars")
-        self.require_keys(run, "$.exemplar_registries.run_exemplars", {"retention_policy", "accepted", "rejected"})
+        self.require_keys(run, "$.exemplar_registries.run_exemplars", {"retention_policy", *MEMORY_BUCKETS})
         if run.get("retention_policy") != "rolling_fifo":
             self.error("$.exemplar_registries.run_exemplars.retention_policy", "must be rolling_fifo")
-        for bucket in ("accepted", "rejected"):
+        for bucket in MEMORY_BUCKETS:
             entries = self.require_list(run.get(bucket), f"$.exemplar_registries.run_exemplars.{bucket}")
             if len(entries) > 5:
                 self.error(f"$.exemplar_registries.run_exemplars.{bucket}", "cannot exceed five")
@@ -347,9 +353,6 @@ class AuditValidator:
                 previous_id = previous.get("candidate_id")
                 if preceding != previous_id:
                     self.error(f"$.candidates[{candidate.get('candidate_id')}].exemplar_context.preceding_same_position_candidate_id", f"must equal {previous_id!r}")
-                memory = list(context.get("accepted_run_ids", [])) + list(context.get("rejected_run_ids", []))
-                if previous_id not in memory:
-                    self.error(f"$.candidates[{candidate.get('candidate_id')}].exemplar_context", "must include the immediately preceding candidate after its verdict")
                 if isinstance(previous.get("generation_index"), int) and isinstance(candidate.get("generation_index"), int):
                     if previous["generation_index"] >= candidate["generation_index"]:
                         self.error(f"$.candidates[{candidate.get('candidate_id')}].generation_index", "must follow the preceding candidate's judgment")
@@ -378,6 +381,8 @@ class AuditValidator:
             "estimated_difficulty",
             "difficulty_fit",
             "difficulty_justification",
+            "difficulty_confidence",
+            "difficulty_basis",
             "classification_review_context",
             "classification_revealed_before_target_comparison",
             "duplication",
@@ -429,9 +434,9 @@ class AuditValidator:
         for field in ("target_difficulty", "estimated_difficulty"):
             if candidate.get(field) not in DIFFICULTY:
                 self.error(f"{path}.{field}", "must be Easy, Medium, or Hard")
-        for field in ("bloom_fit", "difficulty_fit"):
-            if candidate.get(field) not in FITS:
-                self.error(f"{path}.{field}", "must be pass or fail")
+        if candidate.get("bloom_fit") not in FITS:
+            self.error(f"{path}.bloom_fit", "must be pass or fail")
+        self.validate_difficulty(candidate, path)
         if position:
             if candidate.get("target_bloom") != position.get("target_bloom"):
                 self.error(f"{path}.target_bloom", "does not match blueprint target")
@@ -440,20 +445,17 @@ class AuditValidator:
         for field in ("bloom_justification", "difficulty_justification"):
             if not isinstance(candidate.get(field), str) or not candidate.get(field, "").strip():
                 self.error(f"{path}.{field}", "must be a concise observable justification")
-        self.validate_review_context(
-            candidate.get("classification_review_context"),
-            f"{path}.classification_review_context",
-            candidate.get("verdict"),
-        )
+        self.validate_review_context(candidate.get("classification_review_context"),
+                                     f"{path}.classification_review_context", candidate.get("verdict"))
         if candidate.get("classification_revealed_before_target_comparison") is not True:
             self.error(
                 f"{path}.classification_revealed_before_target_comparison",
                 "must be true",
             )
         if candidate.get("verdict") == "pass" and (
-            candidate.get("bloom_fit") != "pass" or candidate.get("difficulty_fit") != "pass"
+            candidate.get("bloom_fit") != "pass" or candidate.get("difficulty_fit") not in {"aligned", "adjacent_uncertain"}
         ):
-            self.error(path, "passing candidates require passing Bloom and difficulty fit")
+            self.error(path, "passing candidates require passing Bloom fit and aligned or adjacent_uncertain difficulty")
 
         item = self.require_object(candidate.get("item"), f"{path}.item")
         if candidate.get("item_type") == "mcq":
@@ -475,34 +477,122 @@ class AuditValidator:
         if candidate.get("selected") and candidate.get("final_status") != "selected":
             self.error(f"{path}.final_status", "must be selected when selected is true")
 
+    def validate_difficulty(self, candidate: dict[str, Any], path: str) -> None:
+        confidence = candidate.get("difficulty_confidence")
+        if not isinstance(confidence, str) or confidence not in {"low", "medium", "high"}:
+            self.error(f"{path}.difficulty_confidence", "must be low, medium, or high; not calibrated probability")
+        basis = candidate.get("difficulty_basis")
+        if not isinstance(basis, str) or not 1 <= len(basis.strip()) <= 500:
+            self.error(f"{path}.difficulty_basis", "must be a concise non-empty basis (maximum 500 characters)")
+        labels = ["Easy", "Medium", "Hard"]
+        target, estimate = candidate.get("target_difficulty"), candidate.get("estimated_difficulty")
+        if target in labels and estimate in labels:
+            distance = abs(labels.index(target) - labels.index(estimate))
+            expected = "aligned" if distance == 0 else (
+                "mismatch" if distance == 2 else
+                "adjacent_uncertain" if confidence in ("low", "medium") else "review_required")
+            if candidate.get("difficulty_fit") != expected:
+                self.error(f"{path}.difficulty_fit", f"must be {expected} under the declared comparison policy")
+        elif candidate.get("difficulty_fit") not in tuple(DIFFICULTY_FITS):
+            self.error(f"{path}.difficulty_fit", "unsupported difficulty disposition")
+
     def validate_run_exemplar_consistency(self, value: Any) -> None:
         registries = value if isinstance(value, dict) else {}
-        run = registries.get("run_exemplars") if isinstance(registries.get("run_exemplars"), dict) else {}
-        observed: dict[str, list[str]] = {"accepted": [], "rejected": []}
-        for bucket in ("accepted", "rejected"):
-            for entry in run.get(bucket, []) if isinstance(run.get(bucket), list) else []:
-                if not isinstance(entry, dict):
-                    continue
-                cid = entry.get("candidate_id")
-                if isinstance(cid, str):
-                    observed[bucket].append(cid)
-                    candidate = self.candidates.get(cid)
-                    if candidate is None:
-                        self.error(f"$.exemplar_registries.run_exemplars.{bucket}", f"unknown candidate {cid!r}")
-                    elif bucket == "accepted" and candidate.get("verdict") != "pass":
-                        self.error(f"$.exemplar_registries.run_exemplars.{bucket}", f"{cid!r} was not accepted")
-                    elif bucket == "rejected" and candidate.get("verdict") == "pass":
-                        self.error(f"$.exemplar_registries.run_exemplars.{bucket}", f"{cid!r} was accepted, not rejected")
-        ordered = sorted(
-            self.candidates.values(),
-            key=lambda candidate: candidate.get("generation_index", 10**9),
-        )
-        expected_accepted = [candidate.get("candidate_id") for candidate in ordered if candidate.get("verdict") == "pass"][-5:]
-        expected_rejected = [candidate.get("candidate_id") for candidate in ordered if candidate.get("verdict") != "pass"][-5:]
-        if observed["accepted"] != expected_accepted:
-            self.error("$.exemplar_registries.run_exemplars.accepted", "must contain the final FIFO window of accepted candidates in order")
-        if observed["rejected"] != expected_rejected:
-            self.error("$.exemplar_registries.run_exemplars.rejected", "must contain the final FIFO window of rejected candidates in order")
+        run = self.require_object(registries.get("run_exemplars"), "$.exemplar_registries.run_exemplars")
+        events = self.require_list(registries.get("judgment_history"), "$.exemplar_registries.judgment_history")
+        windows = {bucket: [] for bucket in MEMORY_BUCKETS}
+        snapshots = [{bucket: [] for bucket in MEMORY_BUCKETS}]
+        latest = {}
+        first_event = {}
+        for i, raw in enumerate(events, 1):
+            ep = f"$.exemplar_registries.judgment_history[{i-1}]"
+            event = self.require_object(raw, ep)
+            self.require_keys(event, ep, {"event_index", "candidate_id", "revision_count", "verdict", "item_summary", "item_snapshot", "justification"})
+            if type(event.get("event_index")) is not int or event.get("event_index") != i:
+                self.error(ep, "event_index must be contiguous from 1")
+            cid = event.get("candidate_id")
+            if not isinstance(cid, str) or cid not in self.candidates:
+                self.error(ep, "must refer to a recorded candidate")
+                snapshots.append(copy.deepcopy(windows))
+                continue
+            verdict, revision = event.get("verdict"), event.get("revision_count")
+            if not isinstance(verdict, str) or verdict not in VERDICTS:
+                self.error(ep, "unsupported verdict")
+            if type(revision) is not int or not 0 <= revision <= 2:
+                self.error(ep, "revision_count must be 0, 1, or 2")
+            for field in ("item_summary", "justification"):
+                if not isinstance(event.get(field), str) or not event.get(field, "").strip():
+                    self.error(f"{ep}.{field}", "must be non-empty")
+            snapshot = self.require_object(event.get("item_snapshot"), f"{ep}.item_snapshot")
+            if event.get("item_summary") != (snapshot.get("stem") or snapshot.get("prompt")):
+                self.error(ep, "item_summary must match the immutable item snapshot stem/prompt")
+            if verdict == "revise":
+                for field in ("retain", "correct"):
+                    text = event.get(field)
+                    if not isinstance(text, str) or not 1 <= len(text.strip()) <= 500:
+                        self.error(f"{ep}.{field}", "revisable exemplars require concise useful-core and defect descriptions")
+            prior = latest.get(cid)
+            if prior is None:
+                if "human_resolution" in event:
+                    self.error(ep, "first judgment cannot claim a human resolution of a nonexistent review")
+                first_event[cid] = i
+                if revision != 0:
+                    self.error(ep, "first judgment must record revision zero")
+            elif revision == prior.get("revision_count"):
+                resolution = self.require_object(event.get("human_resolution"), f"{ep}.human_resolution")
+                if prior.get("verdict") != "manual_review" or verdict not in MEMORY_BUCKETS.values():
+                    self.error(ep, "same-revision reclassification requires a prior manual_review and a resolved verdict")
+                if event.get("item_snapshot") != prior.get("item_snapshot"):
+                    self.error(ep, "a changed item requires a new revision, not a same-revision human resolution")
+                for field in ("resolved_by", "resolved_at", "justification"):
+                    if not isinstance(resolution.get(field), str) or not resolution.get(field, "").strip():
+                        self.error(f"{ep}.human_resolution.{field}", "must record the human resolution")
+            elif type(revision) is not int or type(prior.get("revision_count")) is not int or revision != prior["revision_count"] + 1:
+                self.error(ep, "revision judgments must advance one revision at a time")
+            elif "human_resolution" in event:
+                self.error(ep, "human_resolution is only for resolving manual_review without revising the item")
+            latest[cid] = event
+            # Superseded versions stop teaching the generator stale defects.
+            for bucket in MEMORY_BUCKETS:
+                windows[bucket] = [n for n in windows[bucket] if events[n-1].get("candidate_id") != cid]
+                if verdict == MEMORY_BUCKETS[bucket]:
+                    windows[bucket] = (windows[bucket] + [i])[-5:]
+            snapshots.append(copy.deepcopy(windows))
+
+        ordered = sorted(self.candidates.values(), key=lambda c: c.get("generation_index") if type(c.get("generation_index")) is int else 10**9)
+        for index, candidate in enumerate(ordered):
+            cid = candidate.get("candidate_id")
+            event = latest.get(cid)
+            cp = f"$.candidates[{cid}].exemplar_context"
+            if event is None or event.get("verdict") != candidate.get("verdict") or event.get("revision_count") != candidate.get("revision_count"):
+                self.error(cp, "latest judgment must match actual candidate verdict and revision")
+            if event and event.get("item_snapshot") != candidate.get("item"):
+                self.error(cp, "latest judgment snapshot must equal the current complete item")
+            context = candidate.get("exemplar_context") if isinstance(candidate.get("exemplar_context"), dict) else {}
+            boundary = context.get("after_event_index")
+            if type(boundary) is not int or boundary != first_event.get(cid, 0) - 1 or boundary < 0:
+                self.error(cp, "after_event_index must identify the history prefix immediately before this candidate's first judgment")
+                continue
+            if index and boundary < first_event.get(ordered[index-1].get("candidate_id"), len(events)+1):
+                self.error(cp, "generation must follow the immediately preceding generated candidate's judgment")
+            # The initial generation packet names immutable events, not retroactively relabeled candidates.
+            for bucket in MEMORY_BUCKETS:
+                expected_ids = [events[n-1]["candidate_id"] for n in snapshots[boundary][bucket]]
+                if context.get(f"{bucket}_run_ids") != expected_ids:
+                    self.error(cp, f"{bucket}_run_ids must equal the FIFO window at generation time")
+            calibration = registries.get("calibration_exemplars") if isinstance(registries.get("calibration_exemplars"), list) else []
+            expected_cal = [e.get("exemplar_id") for e in calibration if isinstance(e, dict)]
+            if context.get("calibration_ids") != expected_cal:
+                self.error(cp, "must supply the fixed approved calibration registry")
+        for bucket in MEMORY_BUCKETS:
+            entries = self.require_list(run.get(bucket), f"$.exemplar_registries.run_exemplars.{bucket}")
+            expected = []
+            for n in windows[bucket]:
+                event = events[n-1]
+                candidate = self.candidates[event["candidate_id"]]
+                expected.append(memory_entry(candidate, event))
+            if entries != expected:
+                self.error(f"$.exemplar_registries.run_exemplars.{bucket}", "must equal the final FIFO window and its actual verdict/feedback records")
 
         for left, right in itertools.combinations(ordered, 2):
             left_text = normalize_text(candidate_prompt_text(left))
@@ -566,8 +656,8 @@ class AuditValidator:
             self.error(f"{item_path}.answer_rationale", "must be a non-empty string")
 
         checks = self.require_list(candidate.get("blind_answer_checks"), f"{path}.blind_answer_checks")
-        if candidate.get("verdict") == "pass" and len(checks) != 2:
-            self.error(f"{path}.blind_answer_checks", "passing MCQs require exactly two blind checks")
+        if len(checks) != 2:
+            self.error(f"{path}.blind_answer_checks", "MCQs require exactly two separate blind checks")
         for index, raw in enumerate(checks):
             check_path = f"{path}.blind_answer_checks[{index}]"
             check = self.require_object(raw, check_path)
@@ -703,8 +793,8 @@ class AuditValidator:
 
     def validate_exemplar_context(self, value: Any, path: str) -> None:
         context = self.require_object(value, f"{path}.exemplar_context")
-        self.require_keys(context, f"{path}.exemplar_context", {"calibration_ids", "accepted_run_ids", "rejected_run_ids", "preceding_same_position_candidate_id"})
-        for field in ("calibration_ids", "accepted_run_ids", "rejected_run_ids"):
+        self.require_keys(context, f"{path}.exemplar_context", {"calibration_ids", "accepted_run_ids", "revisable_run_ids", "rejected_run_ids", "preceding_same_position_candidate_id", "after_event_index"})
+        for field in ("calibration_ids", "accepted_run_ids", "revisable_run_ids", "rejected_run_ids"):
             entries = self.require_list(context.get(field), f"{path}.exemplar_context.{field}")
             if len(entries) > 5:
                 self.error(f"{path}.exemplar_context.{field}", "cannot exceed five")
@@ -754,6 +844,7 @@ class AuditValidator:
             "blueprint_coverage_verified",
             "bloom_distribution_verified",
             "difficulty_distribution_verified",
+            "difficulty_caveat_candidate_ids",
             "item_type_distribution_verified",
             "points_verified",
             "answer_key_membership_verified",
@@ -786,6 +877,11 @@ class AuditValidator:
         ):
             if obj.get(field) is not True:
                 self.error(f"$.final_selection.{field}", "must be true")
+
+        caveats = self.require_list(obj.get("difficulty_caveat_candidate_ids"), "$.final_selection.difficulty_caveat_candidate_ids")
+        expected_caveats = [cid for cid in selected if isinstance(cid, str) and self.candidates.get(cid, {}).get("difficulty_fit") == "adjacent_uncertain"]
+        if caveats != expected_caveats:
+            self.error("$.final_selection.difficulty_caveat_candidate_ids", "must list exactly the selected adjacent_uncertain candidates in selection order")
 
         duplication = self.require_object(obj.get("assessment_duplication_pass"), "$.final_selection.assessment_duplication_pass")
         self.require_keys(duplication, "$.final_selection.assessment_duplication_pass", {"completed", "run_count", "status", "comparisons", "replacement_history"})
@@ -899,7 +995,7 @@ class AuditValidator:
                 normalized = key.lower().replace(" ", "_")
                 if normalized in FORBIDDEN_REASONING_KEYS:
                     self.error(f"{path}.{key}", "must not store chain-of-thought or hidden reasoning")
-                if "justification" in normalized and isinstance(child, str) and len(child) > 500:
+                if ("justification" in normalized or normalized in {"retain", "correct", "difficulty_basis"}) and isinstance(child, str) and len(child) > 500:
                     self.error(f"{path}.{key}", "must be concise (500 characters or fewer)")
                 self.validate_compact_observations(child, f"{path}.{key}")
         elif isinstance(value, list):
@@ -1029,7 +1125,9 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
         "bloom_justification": "The response must perform the stated cognitive operation on case evidence.",
         "target_difficulty": "Medium",
         "estimated_difficulty": "Medium",
-        "difficulty_fit": "pass",
+        "difficulty_fit": "aligned",
+        "difficulty_confidence": "medium",
+        "difficulty_basis": "Two linked steps; familiar context is assumed, not measured.",
         "difficulty_justification": "The task requires two linked steps with limited integration.",
         "classification_review_context": review_context(f"fixture-{cid}-classification"),
         "classification_revealed_before_target_comparison": True,
@@ -1046,7 +1144,9 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
         "exemplar_context": {
             "calibration_ids": [],
             "accepted_run_ids": [],
+            "revisable_run_ids": [],
             "rejected_run_ids": [],
+            "after_event_index": gi - 1,
             "preceding_same_position_candidate_id": None,
         },
         "rejection_checks": rejection_checks(),
@@ -1055,18 +1155,6 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
         "verdict": "pass",
         "selected": selected,
         "final_status": "selected" if selected else "eligible",
-    }
-
-
-def run_exemplar_entry(candidate: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "candidate_id": candidate["candidate_id"],
-        "item_summary": candidate_prompt_text(candidate),
-        "item_type": candidate["item_type"],
-        "assessed_concepts": list(candidate["assessed_concepts"]),
-        "blueprint_position_id": candidate["blueprint_position_id"],
-        "verdict": candidate["verdict"],
-        "justification": "The recorded candidate verdict determines its bounded run-memory bucket.",
     }
 
 
@@ -1082,7 +1170,7 @@ def valid_fixture() -> dict[str, Any]:
     b2["item"]["prompt"] = "Judge the alternative course of action against the approved criteria and defend the result."
     b2["exemplar_context"]["accepted_run_ids"] = ["BP-01-C1", "BP-01-C2", "BP-02-C1"]
     b2["exemplar_context"]["preceding_same_position_candidate_id"] = "BP-02-C1"
-    return {
+    fixture = {
         "schema_version": RELEASE,
         "workflow_status": "awaiting_final_approval",
         "metadata": {
@@ -1096,6 +1184,8 @@ def valid_fixture() -> dict[str, Any]:
                 "direct_empirical_scope": "short college-level multiple-choice items",
                 "essay_workflow_empirically_validated": False,
                 "model_difficulty_is_irt": False,
+            "difficulty_confidence_empirically_calibrated": False,
+            "model_difficulty_is_empirical": False,
                 "post_administration_psychometrics_included": False,
             },
         },
@@ -1133,12 +1223,8 @@ def valid_fixture() -> dict[str, Any]:
             "calibration_exemplars": [],
             "run_exemplars": {
                 "retention_policy": "rolling_fifo",
-                "accepted": [
-                    run_exemplar_entry(a1),
-                    run_exemplar_entry(a2),
-                    run_exemplar_entry(b1),
-                    run_exemplar_entry(b2),
-                ],
+                "accepted": [],
+                "revisable": [],
                 "rejected": [],
             },
         },
@@ -1174,6 +1260,7 @@ def valid_fixture() -> dict[str, Any]:
             "blueprint_coverage_verified": True,
             "bloom_distribution_verified": True,
             "difficulty_distribution_verified": True,
+            "difficulty_caveat_candidate_ids": [],
             "item_type_distribution_verified": True,
             "points_verified": True,
             "answer_key_membership_verified": True,
@@ -1184,6 +1271,41 @@ def valid_fixture() -> dict[str, Any]:
             "final": {"status": "pending", "approved_by": None, "approved_at": None},
         },
     }
+
+    rebuild_memory(fixture)
+    return fixture
+
+
+def memory_entry(candidate: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
+    entry = {key: event.get(key) for key in ("event_index", "candidate_id", "revision_count", "verdict", "item_summary", "justification")}
+    entry.update({key: candidate.get(key) for key in ("item_type", "assessed_concepts", "blueprint_position_id")})
+    if event.get("verdict") == "revise":
+        entry.update({key: event.get(key) for key in ("retain", "correct")})
+    return entry
+
+
+def rebuild_memory(fixture: dict[str, Any]) -> None:
+    """Fixture helper: one final judgment per candidate; history tests add later events explicitly."""
+    events = []
+    windows = {bucket: [] for bucket in MEMORY_BUCKETS}
+    for candidate in sorted(fixture["candidates"], key=lambda c: c["generation_index"]):
+        context = candidate["exemplar_context"]
+        context["after_event_index"] = len(events)
+        context["calibration_ids"] = [e["exemplar_id"] for e in fixture["exemplar_registries"]["calibration_exemplars"]]
+        for bucket in MEMORY_BUCKETS:
+            context[f"{bucket}_run_ids"] = [e["candidate_id"] for e in windows[bucket]]
+        event = {"event_index": len(events)+1, "candidate_id": candidate["candidate_id"],
+                 "revision_count": candidate["revision_count"], "verdict": candidate["verdict"],
+                 "item_summary": candidate_prompt_text(candidate), "item_snapshot": copy.deepcopy(candidate["item"]),
+                 "justification": "Recorded review result."}
+        if event["verdict"] == "revise":
+            event.update(retain="Retain the grounded concept and question core.", correct="Repair the identified wording or distractor defect.")
+        events.append(event)
+        for bucket, verdict in MEMORY_BUCKETS.items():
+            if event["verdict"] == verdict:
+                windows[bucket] = (windows[bucket] + [memory_entry(candidate, event)])[-5:]
+    fixture["exemplar_registries"]["judgment_history"] = events
+    fixture["exemplar_registries"]["run_exemplars"] = {"retention_policy": "rolling_fifo", **windows}
 
 
 def run_self_tests() -> int:
@@ -1285,19 +1407,10 @@ def run_self_tests() -> int:
     reviewed["reviewed_bloom"] = "Analyze"
     reviewed["estimated_difficulty"] = "Hard"
     reviewed["bloom_fit"] = "fail"
-    reviewed["difficulty_fit"] = "fail"
+    reviewed["difficulty_fit"] = "adjacent_uncertain"
     reviewed["verdict"] = "revise"
     reviewed["final_status"] = "revision_required"
-    good["candidates"][2]["exemplar_context"]["accepted_run_ids"] = ["BP-01-C1"]
-    good["candidates"][2]["exemplar_context"]["rejected_run_ids"] = ["BP-01-C2"]
-    good["candidates"][3]["exemplar_context"]["accepted_run_ids"] = ["BP-01-C1", "BP-02-C1"]
-    good["candidates"][3]["exemplar_context"]["rejected_run_ids"] = ["BP-01-C2"]
-    good["exemplar_registries"]["run_exemplars"]["accepted"] = [
-        run_exemplar_entry(good["candidates"][0]),
-        run_exemplar_entry(good["candidates"][2]),
-        run_exemplar_entry(good["candidates"][3]),
-    ]
-    good["exemplar_registries"]["run_exemplars"]["rejected"] = [run_exemplar_entry(reviewed)]
+    rebuild_memory(good)
     tests.append(("reviewed Bloom and difficulty may differ from targets", good, True))
 
     bad = valid_fixture()
@@ -1344,10 +1457,10 @@ def run_self_tests() -> int:
     tests.append(("second solver repeats first shuffled order", bad, False))
 
     bad = valid_fixture()
-    bad["schema_version"] = "2026.2"
-    bad["metadata"]["release"] = "2026.2"
-    bad["metadata"]["manifest_version"] = "2026.2.0"
-    tests.append(("2026.2 audit is not silently upgraded", bad, False))
+    bad["schema_version"] = "2026.5"
+    bad["metadata"]["release"] = "2026.5"
+    bad["metadata"]["manifest_version"] = "2026.5.0"
+    tests.append(("2026.5 audit is not silently upgraded", bad, False))
 
     bad = valid_fixture()
     bad["workflow_status"] = "approved_for_delivery"
@@ -1364,14 +1477,9 @@ def run_self_tests() -> int:
     reviewed["final_status"] = "independent_review_required"
     reviewed["classification_review_context"]["isolation_verified"] = False
     reviewed["classification_review_context"]["agent_id"] = None
-    good["candidates"][2]["exemplar_context"]["accepted_run_ids"] = ["BP-01-C1"]
-    good["candidates"][2]["exemplar_context"]["rejected_run_ids"] = ["BP-01-C2"]
-    good["candidates"][3]["exemplar_context"]["accepted_run_ids"] = ["BP-01-C1", "BP-02-C1"]
-    good["candidates"][3]["exemplar_context"]["rejected_run_ids"] = ["BP-01-C2"]
-    good["exemplar_registries"]["run_exemplars"]["accepted"] = [run_exemplar_entry(good["candidates"][i]) for i in (0, 2, 3)]
-    good["exemplar_registries"]["run_exemplars"]["rejected"] = [run_exemplar_entry(reviewed)]
     good["workflow_status"] = "draft"
     good["escalations"] = [{"escalation_id": "E-1", "reason": "Classification subagent unavailable.", "status": "unresolved"}]
+    rebuild_memory(good)
     tests.append(("unperformed nonpassing review has null agent ID", good, True))
 
     bad = copy.deepcopy(good)
@@ -1386,6 +1494,125 @@ def run_self_tests() -> int:
     bad["workflow_status"] = "awaiting_final_approval"
     tests.append(("unverified review blocks final approval request", bad, False))
 
+    for verdict, bucket in (("pass", "accepted"), ("revise", "revisable"), ("reject", "rejected"), ("manual_review", None)):
+        good = valid_fixture()
+        candidate = good["candidates"][1]
+        candidate["verdict"] = verdict
+        candidate["final_status"] = {"pass": "eligible", "revise": "revision_required", "reject": "rejected", "manual_review": "independent_review_required"}[verdict]
+        rebuild_memory(good)
+        tests.append((f"{verdict} enters {bucket or 'no'} generation memory", good, True))
+        if bucket:
+            bad = copy.deepcopy(good)
+            wrong = "rejected" if bucket != "rejected" else "accepted"
+            entries = bad["exemplar_registries"]["run_exemplars"]
+            target = next(e for e in entries[bucket] if e["candidate_id"] == candidate["candidate_id"])
+            entries[wrong].append(target)
+            tests.append((f"{verdict} cannot enter wrong bucket", bad, False))
+        else:
+            bad = copy.deepcopy(good)
+            event = bad["exemplar_registries"]["judgment_history"][1]
+            bad["exemplar_registries"]["run_exemplars"]["rejected"].append(memory_entry(candidate, event))
+            tests.append(("manual_review is not a negative exemplar", bad, False))
+        if verdict == "revise":
+            for field in ("retain", "correct"):
+                bad = copy.deepcopy(good)
+                del bad["exemplar_registries"]["judgment_history"][1][field]
+                # Missing feedback should produce a validation error, not crash when rebuilding the expected window.
+                tests.append((f"revisable example needs {field}", bad, False))
+
+    good = valid_fixture()
+    candidate = good["candidates"][1]
+    candidate["verdict"] = "manual_review"
+    candidate["final_status"] = "independent_review_required"
+    rebuild_memory(good)
+    # Resolve only after later candidates were generated: their old packets must stay unchanged.
+    event = copy.deepcopy(good["exemplar_registries"]["judgment_history"][1])
+    event.update(event_index=5, verdict="reject", human_resolution={"resolved_by": "instructor", "resolved_at": "2026-09-08", "justification": "Confirmed a substantive ambiguity."})
+    candidate.update(verdict="reject", final_status="rejected")
+    good["exemplar_registries"]["judgment_history"].append(event)
+    good["exemplar_registries"]["run_exemplars"]["rejected"] = [memory_entry(candidate, event)]
+    tests.append(("late human resolution preserves earlier generation packets", good, True))
+    bad = copy.deepcopy(good)
+    bad["candidates"][1]["item"]["options"][0]["text"] = "A changed distractor."
+    bad["exemplar_registries"]["judgment_history"][-1]["item_snapshot"] = copy.deepcopy(bad["candidates"][1]["item"])
+    tests.append(("changed distractor cannot masquerade as human resolution", bad, False))
+    bad = copy.deepcopy(good)
+    del bad["exemplar_registries"]["judgment_history"][-1]["human_resolution"]
+    tests.append(("manual resolution needs human provenance", bad, False))
+    bad = copy.deepcopy(good)
+    bad["candidates"][2]["exemplar_context"]["rejected_run_ids"] = ["BP-01-C2"]
+    tests.append(("late resolution cannot retroactively poison memory", bad, False))
+
+    good = valid_fixture()
+    candidate = good["candidates"][1]
+    candidate.update(verdict="revise", final_status="revision_required")
+    rebuild_memory(good)
+    event = copy.deepcopy(good["exemplar_registries"]["judgment_history"][1])
+    event.update(event_index=5, revision_count=1, verdict="pass")
+    event.pop("retain"); event.pop("correct")
+    candidate.update(revision_count=1, verdict="pass", final_status="eligible")
+    good["exemplar_registries"]["judgment_history"].append(event)
+    windows = good["exemplar_registries"]["run_exemplars"]
+    windows["revisable"] = []
+    windows["accepted"].append(memory_entry(candidate, event))
+    candidate["item"]["options"][0]["text"] = "A revised misconception-based distractor."
+    event["item_snapshot"] = copy.deepcopy(candidate["item"])
+    tests.append(("revised pass replaces stale revisable exemplar", good, True))
+    bad = copy.deepcopy(good)
+    bad["exemplar_registries"]["judgment_history"][-1]["revision_count"] = 3
+    tests.append(("judgment history cannot conceal revision budget exhaustion", bad, False))
+
+    for label, mutate in (
+        ("missing separate classification", lambda c: c.update(classification_review_context=None)),
+        ("missing separate final judge", lambda c: c.update(final_judge={})),
+        ("missing blind solvers", lambda c: c.update(blind_answer_checks=[])),
+    ):
+        bad = valid_fixture(); mutate(bad["candidates"][0])
+        tests.append((label, bad, False))
+
+    for estimate, confidence, fit, passed in (
+        ("Medium", "low", "aligned", True),
+        ("Easy", "low", "adjacent_uncertain", True),
+        ("Hard", "medium", "adjacent_uncertain", True),
+        ("Hard", "high", "review_required", False),
+    ):
+        fixture = valid_fixture()
+        c = fixture["candidates"][0]
+        c.update(estimated_difficulty=estimate, difficulty_confidence=confidence, difficulty_fit=fit)
+        if fit == "adjacent_uncertain":
+            fixture["final_selection"]["difficulty_caveat_candidate_ids"] = [c["candidate_id"]]
+        tests.append((f"difficulty {estimate}/{confidence}/{fit} selection", fixture, passed))
+    good = valid_fixture()
+    c = good["candidates"][1]
+    c.update(estimated_difficulty="Hard", difficulty_confidence="high", difficulty_fit="review_required", verdict="manual_review", final_status="independent_review_required")
+    rebuild_memory(good)
+    tests.append(("confident adjacent disagreement can remain for review", good, True))
+    for field, value in (("difficulty_confidence", "certain"), ("difficulty_confidence", 0.9), ("difficulty_basis", ""), ("difficulty_fit", "pass")):
+        bad = valid_fixture(); bad["candidates"][0][field] = value
+        tests.append((f"honest difficulty metadata {field}={value!r}", bad, False))
+    bad = valid_fixture()
+    bad["blueprint"]["positions"][0]["target_difficulty"] = "Easy"
+    for c in bad["candidates"][:2]: c["target_difficulty"] = "Easy"
+    bad["candidates"][0].update(estimated_difficulty="Hard", difficulty_fit="mismatch")
+    bad["candidates"][1]["difficulty_fit"] = "adjacent_uncertain"
+    tests.append(("substantial difficulty mismatch cannot pass", bad, False))
+    bad = valid_fixture()
+    bad["candidates"][0].update(estimated_difficulty="Hard", difficulty_fit="adjacent_uncertain")
+    tests.append(("selected uncertain estimate requires instructor caveat", bad, False))
+    for field in ("model_difficulty_is_irt", "model_difficulty_is_empirical", "difficulty_confidence_empirically_calibrated", "post_administration_psychometrics_included"):
+        bad = valid_fixture(); bad["metadata"]["research_basis"][field] = True
+        tests.append((f"unsupported empirical claim {field}", bad, False))
+
+    for field in ("event_index", "candidate_id", "revision_count", "verdict", "item_summary", "item_snapshot", "justification"):
+        bad = valid_fixture()
+        del bad["exemplar_registries"]["judgment_history"][0][field]
+        tests.append((f"missing judgment event {field} returns errors", bad, False))
+    for field, value in (("difficulty_confidence", []), ("difficulty_basis", {})):
+        bad = valid_fixture(); bad["candidates"][0][field] = value
+        tests.append((f"malformed {field} returns errors", bad, False))
+    bad = valid_fixture(); bad["exemplar_registries"]["judgment_history"][0]["verdict"] = []
+    tests.append(("malformed judgment verdict returns errors", bad, False))
+
     failures = 0
     for name, fixture, expected_valid in tests:
         errors = AuditValidator(fixture).validate()
@@ -1397,12 +1624,45 @@ def run_self_tests() -> int:
                 print(f"  {error}")
         else:
             print(f"PASS: {name}")
-    print(f"\n{len(tests) - failures}/{len(tests)} fixture tests passed")
+    memory_tests = []
+    fixture = valid_fixture()
+    fixture["candidates"] = []
+    for i in range(21):
+        c = base_candidate(f"FIFO-{i}", f"P-{i}", i+1, 1, "mcq", False)
+        c["verdict"] = ["pass", "revise", "reject"][i % 3]
+        c["item"]["stem"] = f"Scenario {i}: " + chr(65+i) * 40
+        fixture["candidates"].append(c)
+    rebuild_memory(fixture)
+    memory_tests.append(("independent FIFO retention of five in all three buckets", fixture, True))
+    for bucket in MEMORY_BUCKETS:
+        for defect in ("order", "retention", "feedback"):
+            bad = copy.deepcopy(fixture)
+            entries = bad["exemplar_registries"]["run_exemplars"][bucket]
+            if defect == "order": entries.reverse()
+            elif defect == "retention": entries.pop(0)
+            else: entries[0]["verdict"] = "manual_review"
+            memory_tests.append((f"{bucket} rejects incorrect {defect}", bad, False))
+    bad = copy.deepcopy(fixture)
+    bad["candidates"][-1]["exemplar_context"]["revisable_run_ids"] = []
+    memory_tests.append(("generation packet must include revisable FIFO window", bad, False))
+    for name, fixture, expected in memory_tests:
+        validator = AuditValidator(fixture)
+        validator.candidates = {c["candidate_id"]: c for c in fixture["candidates"]}
+        validator.validate_exemplar_registries(fixture["exemplar_registries"])
+        validator.validate_run_exemplar_consistency(fixture["exemplar_registries"])
+        actual = not validator.errors
+        if actual != expected:
+            failures += 1
+            print(f"FAIL: {name}: {validator.errors[:3]}")
+        else:
+            print(f"PASS: {name}")
+    total = len(tests) + len(memory_tests)
+    print(f"\n{total - failures}/{total} fixture tests passed")
     return 1 if failures else 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.5 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.6 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1426,7 +1686,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.5 structure and invariants passed.")
+        print("Audit valid: declared 2026.6 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

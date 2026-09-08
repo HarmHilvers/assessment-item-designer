@@ -42,7 +42,7 @@ Observable signals: design an intervention, construct an argument, formulate a p
 
 ## Independent review procedure
 
-Use a fresh classification subagent without inherited history, following the subagent execution contract in `quality-framework.md`. The reviewer receives only the student-facing item content and permitted resources, but not:
+Use a fresh classification subagent, distinct from answer solvers and the final judge, without inherited history, following the subagent execution contract in `quality-framework.md`. The reviewer receives only the student-facing item content and permitted resources, but not:
 
 - `target_bloom`;
 - `target_difficulty`;
@@ -55,30 +55,35 @@ The reviewer records `reviewed_bloom` first, with one or two short sentences cit
 
 Do not infer level from a single command verb. Consider what information the item supplies, whether answer options reveal the needed reasoning, and the minimum cognitive process sufficient for a well-prepared student to answer correctly.
 
-## Difficulty estimate
+## Difficulty estimate and confidence
 
-Difficulty is related to, but not determined by, Bloom. Estimate it using:
+Difficulty is related to, but not determined by, Bloom. Record `estimated_difficulty: Easy | Medium | Hard`, `difficulty_confidence: low | medium | high`, and `difficulty_basis` (one or two sentences, maximum 500 characters) before revealing the current item's target. The basis should name observable features and assumptions, for example reasoning depth, inferential steps, context familiarity, scaffolding or calculation burden. Confidence itself is not empirically calibrated.
 
-- number and dependency of reasoning steps;
-- abstraction;
-- context familiarity or novelty;
-- integration across concepts or representations;
-- scaffolding and cues in the stem and options;
-- language and reading load;
-- required calculation and permitted resources.
+Use these approximate anchors independently of Bloom:
 
-Default anchors:
+- **Easy:** familiar context, few dependent steps, substantial scaffolding.
+- **Medium:** several linked steps, some integration, limited scaffolding.
+- **Hard:** extended dependencies, unfamiliar applications or integration across concepts.
 
-- **Easy:** Remember or Understand, one step, familiar context, strong cues.
-- **Medium:** Apply or introductory Analyze, two or three steps, limited integration.
-- **Hard:** advanced Analyze, Evaluate, or Create, multiple dependent steps, novel context, or synthesis.
+A poorly worded item can be hard for irrelevant reasons; that is a quality defect. Neither a Bloom label nor a command verb determines difficulty.
 
-These are defaults, not conversion rules. A poorly worded Remember item may be hard for irrelevant reasons; that is a quality defect, not desirable difficulty. An Analyze item can be easy when options reveal the comparison.
+After independently fixing Bloom, the same classification reviewer may use instructor-approved calibration examples, historical instructor questions or comparable administered items to strengthen the difficulty basis. Describe the comparison and cite supplied source locators. Separate empirical observations about those historical items from estimates about the new candidate. These examples must not reveal the current target or expand assessment scope. Sparse or indirect evidence generally warrants lower confidence; no confidence level guarantees correctness.
 
-Record `estimated_difficulty` before viewing `target_difficulty`, then set `difficulty_fit: pass | fail`. Use a concise observation such as: "Requires comparison of three competing explanations using two supplied criteria." Do not record hidden reasoning or chain-of-thought.
+## Canonical target-fit policy
 
-## Target-fit guidance
+The coordinator compares the fixed review results with the approved targets. Bloom fit remains `pass | fail` and follows the blueprint's explicit acceptable range, or exact category fit when none is specified. A higher reviewed Bloom level is not automatically better.
 
-A reviewed category need not always equal the target label exactly if an approved blueprint explicitly defines an acceptable range. Otherwise use exact category fit. A higher reviewed Bloom level is not automatically better: it may violate accessibility, time, points, or intended coverage.
+Difficulty fit is a design disposition, never a psychometric pass/fail measurement:
 
-Model estimates are pre-administration design judgments. Never label them IRT difficulty or imply that they predict student-response parameters without empirical data.
+| Declared target versus estimate | Confidence | `difficulty_fit` | Consequence |
+| --- | --- | --- | --- |
+| Same category | Any | `aligned` | Eligible if all other controls pass |
+| Adjacent categories | low or medium | `adjacent_uncertain` | May be selected; explicitly flag the uncertainty for final instructor review |
+| Adjacent categories | high | `review_required` | No pass yet; seek instructor clarification or revise and independently reassess |
+| Easy versus Hard | Any | `mismatch` | No pass; revise or resolve the target with the instructor |
+
+For `review_required` or `mismatch`, record `manual_review` when seeking instructor target clarification, `revise` when changing the item, or `reject` when abandoning the candidate. The unchanged-item target-resolution route starts from `manual_review`; revise/reject are not silently relabeled as passes. A human discussion alone does not relabel the estimate or turn a failed disposition into a pass: revise and reassess, or explicitly reapprove the blueprint target and recompute fit while retaining the independent estimate and the change record. All cases remain subject to substantive quality controls and final instructor approval.
+
+List selected `adjacent_uncertain` candidates in the final audit's `difficulty_caveat_candidate_ids` and explain the uncertainty in the instructor-facing material. Verify intended target coverage separately from the distribution of estimates.
+
+Model-estimated difficulty is a pre-administration judgment. Release 2026.6 does not implement student-response analysis or IRT estimation; all claims that its estimates or confidence are empirical/calibrated remain false. Actual post-administration item difficulty or IRT parameters require student-response data and a separate documented analysis. Deterministic validation checks these declarations and comparison consistency, not semantic truth.

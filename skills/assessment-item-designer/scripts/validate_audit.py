@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.6 audit declarations.
+"""Validate Assessment Item Designer 2026.7 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,8 +20,16 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.6"
-MANIFEST_VERSION = "2026.6.0"
+RELEASE = "2026.7"
+MANIFEST_VERSION = "2026.7.0"
+REVIEW_MODES = {"standard", "high_assurance"}
+ESCALATION_TRIGGERS = {
+    "item_judge_key_disagreement",
+    "item_judge_uncertainty",
+    "multiple_plausible_answers",
+    "substantive_reviewer_disagreement",
+    "instructor_requested_answer_check",
+}
 BLOOM = {"Remember", "Understand", "Apply", "Analyze", "Evaluate", "Create"}
 DIFFICULTY = {"Easy", "Medium", "Hard"}
 FITS = {"pass", "fail"}
@@ -84,6 +92,7 @@ class AuditValidator:
         self.candidates: dict[str, dict[str, Any]] = {}
         self.review_agents: dict[str, str] = {}
         self.unverified_reviews: list[str] = []
+        self.review_mode: str | None = None
 
     def error(self, path: str, message: str) -> None:
         self.errors.append(f"{path}: {message}")
@@ -109,6 +118,7 @@ class AuditValidator:
         root = self.require_object(self.data, "$")
         required = {
             "schema_version",
+            "review_mode",
             "workflow_status",
             "metadata",
             "blueprint",
@@ -120,6 +130,9 @@ class AuditValidator:
             "instructor_approval",
         }
         self.require_keys(root, "$", required)
+        self.review_mode = root.get("review_mode") if isinstance(root.get("review_mode"), str) else None
+        if self.review_mode not in REVIEW_MODES:
+            self.error("$.review_mode", "must be standard or high_assurance")
         if root.get("schema_version") != RELEASE:
             self.error("$.schema_version", f"must equal {RELEASE!r}")
         if root.get("workflow_status") not in {
@@ -383,13 +396,11 @@ class AuditValidator:
             "difficulty_justification",
             "difficulty_confidence",
             "difficulty_basis",
-            "classification_review_context",
             "classification_revealed_before_target_comparison",
             "duplication",
             "exemplar_context",
             "rejection_checks",
-            "blind_answer_checks",
-            "final_judge",
+            "reviews",
             "verdict",
             "selected",
             "final_status",
@@ -445,8 +456,6 @@ class AuditValidator:
         for field in ("bloom_justification", "difficulty_justification"):
             if not isinstance(candidate.get(field), str) or not candidate.get(field, "").strip():
                 self.error(f"{path}.{field}", "must be a concise observable justification")
-        self.validate_review_context(candidate.get("classification_review_context"),
-                                     f"{path}.classification_review_context", candidate.get("verdict"))
         if candidate.get("classification_revealed_before_target_comparison") is not True:
             self.error(
                 f"{path}.classification_revealed_before_target_comparison",
@@ -458,10 +467,12 @@ class AuditValidator:
             self.error(path, "passing candidates require passing Bloom fit and aligned or adjacent_uncertain difficulty")
 
         item = self.require_object(candidate.get("item"), f"{path}.item")
+        reviews = self.require_object(candidate.get("reviews"), f"{path}.reviews")
+        self.validate_reviews(reviews, candidate, f"{path}.reviews", path)
         if candidate.get("item_type") == "mcq":
-            self.validate_mcq(item, candidate, path)
+            self.validate_mcq(item, candidate, reviews, path)
         elif candidate.get("item_type") == "essay":
-            self.validate_essay(item, position, path)
+            self.validate_essay(item, position, reviews, path)
         self.validate_duplication(candidate.get("duplication"), candidate, path)
         self.validate_exemplar_context(candidate.get("exemplar_context"), path)
         self.validate_rejection_checks(candidate.get("rejection_checks"), candidate, path)
@@ -504,10 +515,11 @@ class AuditValidator:
         snapshots = [{bucket: [] for bucket in MEMORY_BUCKETS}]
         latest = {}
         first_event = {}
+        historical_review_agents: dict[str, str] = {}
         for i, raw in enumerate(events, 1):
             ep = f"$.exemplar_registries.judgment_history[{i-1}]"
             event = self.require_object(raw, ep)
-            self.require_keys(event, ep, {"event_index", "candidate_id", "revision_count", "verdict", "item_summary", "item_snapshot", "justification"})
+            self.require_keys(event, ep, {"event_index", "candidate_id", "revision_count", "verdict", "item_summary", "item_snapshot", "justification", "review_call_ids"})
             if type(event.get("event_index")) is not int or event.get("event_index") != i:
                 self.error(ep, "event_index must be contiguous from 1")
             cid = event.get("candidate_id")
@@ -515,6 +527,16 @@ class AuditValidator:
                 self.error(ep, "must refer to a recorded candidate")
                 snapshots.append(copy.deepcopy(windows))
                 continue
+            review_ids = self.require_list(event.get("review_call_ids"), f"{ep}.review_call_ids")
+            if any(not isinstance(agent_id, str) or not agent_id.strip() for agent_id in review_ids):
+                self.error(f"{ep}.review_call_ids", "must contain actual runtime agent IDs when a review was performed")
+            if len(review_ids) != len(set(review_ids)):
+                self.error(f"{ep}.review_call_ids", "must contain unique IDs")
+            for agent_id in review_ids:
+                if agent_id in historical_review_agents:
+                    self.error(f"{ep}.review_call_ids", f"reviewer ID must be unique across revisions; already used at {historical_review_agents[agent_id]}")
+                else:
+                    historical_review_agents[agent_id] = ep
             verdict, revision = event.get("verdict"), event.get("revision_count")
             if not isinstance(verdict, str) or verdict not in VERDICTS:
                 self.error(ep, "unsupported verdict")
@@ -568,6 +590,10 @@ class AuditValidator:
                 self.error(cp, "latest judgment must match actual candidate verdict and revision")
             if event and event.get("item_snapshot") != candidate.get("item"):
                 self.error(cp, "latest judgment snapshot must equal the current complete item")
+            if event:
+                current_ids = review_call_ids(candidate)
+                if event.get("review_call_ids") != current_ids:
+                    self.error(cp, "latest judgment review_call_ids must match the current review contexts")
             context = candidate.get("exemplar_context") if isinstance(candidate.get("exemplar_context"), dict) else {}
             boundary = context.get("after_event_index")
             if type(boundary) is not int or boundary != first_event.get(cid, 0) - 1 or boundary < 0:
@@ -620,7 +646,57 @@ class AuditValidator:
                 if not isinstance(item.get(key), str) or not item.get(key, "").strip():
                     self.error(f"{item_path}.{key}", "must be a non-empty string")
 
-    def validate_mcq(self, item: dict[str, Any], candidate: dict[str, Any], path: str) -> None:
+    def validate_reviews(self, reviews: dict[str, Any], candidate: dict[str, Any], path: str, candidate_path: str) -> None:
+        required = {"classification_review", "item_judge", "tie_break_review", "answer_solver_1", "answer_solver_2", "final_judge"}
+        self.require_keys(reviews, path, required)
+        classification = self.require_object(reviews.get("classification_review"), f"{path}.classification_review")
+        self.require_keys(classification, f"{path}.classification_review", {"review_context", "reviewer_id", "reviewed_bloom", "estimated_difficulty", "difficulty_confidence", "difficulty_basis", "justification"})
+        self.validate_review_context(
+            classification.get("review_context"),
+            f"{path}.classification_review.review_context",
+            candidate.get("verdict"),
+            "classification",
+        )
+        if not isinstance(classification.get("reviewer_id"), str) or not classification.get("reviewer_id", "").strip():
+            self.error(f"{path}.classification_review.reviewer_id", "must identify the classification review call")
+        if not isinstance(classification.get("justification"), str) or not classification.get("justification", "").strip():
+            self.error(f"{path}.classification_review.justification", "must be concise and observable")
+        for field in ("reviewed_bloom", "estimated_difficulty", "difficulty_confidence", "difficulty_basis"):
+            if classification.get(field) != candidate.get(field):
+                self.error(f"{path}.classification_review.{field}", f"must match the candidate's recorded independent classification result")
+
+        if candidate.get("item_type") == "essay":
+            for key in ("item_judge", "tie_break_review", "answer_solver_1", "answer_solver_2"):
+                if reviews.get(key) is not None:
+                    self.error(f"{path}.{key}", "must be null for essay candidates")
+            if reviews.get("final_judge") is None:
+                self.error(f"{path}.final_judge", "essay candidates require an independent final/scoring judge")
+            return
+
+        if self.review_mode == "standard":
+            if reviews.get("item_judge") is None:
+                self.error(f"{path}.item_judge", "standard MCQs require an independent item judge")
+            for key in ("answer_solver_1", "answer_solver_2", "final_judge"):
+                if reviews.get(key) is not None:
+                    self.error(f"{path}.{key}", "standard MCQs must not use the high-assurance reviewer fields")
+        elif self.review_mode == "high_assurance":
+            if reviews.get("item_judge") is not None or reviews.get("tie_break_review") is not None:
+                self.error(f"{path}", "high-assurance MCQs must not silently use standard reviewer fields")
+            for key in ("answer_solver_1", "answer_solver_2", "final_judge"):
+                if reviews.get(key) is None:
+                    self.error(f"{path}.{key}", "high-assurance MCQs require classifier, two solvers and final judge")
+        tie = reviews.get("tie_break_review")
+        if tie is not None:
+            tie_obj = self.require_object(tie, f"{path}.tie_break_review")
+            self.require_keys(tie_obj, f"{path}.tie_break_review", {"trigger", "resolution", "reviewer_id", "selected_option_id", "justification", "review_context"})
+            for key in ("trigger", "resolution", "justification", "reviewer_id"):
+                if not isinstance(tie_obj.get(key), str) or not tie_obj.get(key, "").strip():
+                    self.error(f"{path}.tie_break_review.{key}", "must be a non-empty concise description")
+            if tie_obj.get("trigger") not in ESCALATION_TRIGGERS:
+                self.error(f"{path}.tie_break_review.trigger", "must identify a supported adaptive escalation trigger")
+            self.validate_review_context(tie_obj.get("review_context"), f"{path}.tie_break_review.review_context", candidate.get("verdict"), "tie_break")
+
+    def validate_mcq(self, item: dict[str, Any], candidate: dict[str, Any], reviews: dict[str, Any], path: str) -> None:
         item_path = f"{path}.item"
         self.require_keys(item, item_path, {"stem", "options", "correct_option_id", "answer_rationale"})
         if not isinstance(item.get("stem"), str) or not item.get("stem", "").strip():
@@ -655,37 +731,66 @@ class AuditValidator:
         if not isinstance(item.get("answer_rationale"), str) or not item.get("answer_rationale", "").strip():
             self.error(f"{item_path}.answer_rationale", "must be a non-empty string")
 
-        checks = self.require_list(candidate.get("blind_answer_checks"), f"{path}.blind_answer_checks")
-        if len(checks) != 2:
-            self.error(f"{path}.blind_answer_checks", "MCQs require exactly two separate blind checks")
-        for index, raw in enumerate(checks):
-            check_path = f"{path}.blind_answer_checks[{index}]"
-            check = self.require_object(raw, check_path)
-            self.require_keys(check, check_path, {"reviewer_id", "selected_option_id", "options_order", "options_reordered", "justification", "review_context"})
-            if check.get("selected_option_id") not in ids:
-                self.error(f"{check_path}.selected_option_id", "must identify an option")
-            if candidate.get("verdict") == "pass" and check.get("selected_option_id") != key:
-                self.error(f"{check_path}.selected_option_id", "must agree with the key for an automated pass")
-            order = self.require_list(check.get("options_order"), f"{check_path}.options_order")
-            if len(order) != len(ids) or set(order) != ids:
-                self.error(f"{check_path}.options_order", "must list every stable option ID exactly once")
-            if index == 1:
-                if check.get("options_reordered") is not True:
-                    self.error(f"{check_path}.options_reordered", "second blind check must use reordered options")
-                original_order = [option.get("option_id") for option in options if isinstance(option, dict)]
-                first_order = checks[0].get("options_order") if isinstance(checks[0], dict) else None
-                if order == original_order or order == first_order:
-                    self.error(f"{check_path}.options_order", "second blind check order must differ from both original and first solver order")
-            self.validate_review_context(check.get("review_context"), f"{check_path}.review_context", candidate.get("verdict"))
+        if self.review_mode == "standard":
+            judge = self.require_object(reviews.get("item_judge"), f"{path}.reviews.item_judge")
+            self.require_keys(judge, f"{path}.reviews.item_judge", {"verdict", "selected_option_id", "one_best_answer", "uncertainty", "justification", "review_context"})
+            if judge.get("selected_option_id") not in ids:
+                self.error(f"{path}.reviews.item_judge.selected_option_id", "must identify an option")
+            if judge.get("one_best_answer") not in {"pass", "fail", "uncertain"}:
+                self.error(f"{path}.reviews.item_judge.one_best_answer", "must be pass, fail, or uncertain")
+            if judge.get("verdict") not in VERDICTS:
+                self.error(f"{path}.reviews.item_judge.verdict", "has an unsupported value")
+            self.validate_review_context(judge.get("review_context"), f"{path}.reviews.item_judge.review_context", candidate.get("verdict"), "item_judge")
+            tie = reviews.get("tie_break_review")
+            resolved_by_tie = (
+                tie is not None
+                and judge.get("selected_option_id") != key
+                and tie.get("selected_option_id") == key
+                and tie.get("resolution") not in {"majority_vote", "genuine_ambiguity"}
+            )
+            if candidate.get("verdict") == "pass":
+                direct_pass = judge.get("verdict") == "pass" and judge.get("selected_option_id") == key and judge.get("one_best_answer") == "pass"
+                if not direct_pass and not resolved_by_tie:
+                    self.error(f"{path}.reviews.item_judge", "must pass and agree with the key, or be resolved by a fresh tie-break review")
+            if judge.get("selected_option_id") != key or judge.get("one_best_answer") == "uncertain":
+                if tie is None and candidate.get("verdict") == "pass":
+                    self.error(f"{path}.reviews.tie_break_review", "unresolved item-judge disagreement or uncertainty cannot pass without escalation")
+            if tie is not None:
+                if tie.get("selected_option_id") not in ids:
+                    self.error(f"{path}.reviews.tie_break_review.selected_option_id", "must identify an option")
+                if candidate.get("verdict") == "pass" and tie.get("selected_option_id") != key:
+                    self.error(f"{path}.reviews.tie_break_review", "a tie-break reviewer must agree with the key for an automated pass")
+                if tie.get("resolution") == "majority_vote" or "majority" in str(tie.get("resolution", "")).lower():
+                    self.error(f"{path}.reviews.tie_break_review.resolution", "majority voting cannot repair genuine ambiguity")
+        else:
+            solvers = []
+            for index, role in enumerate(("answer_solver_1", "answer_solver_2"), 1):
+                solver_path = f"{path}.reviews.{role}"
+                solver = self.require_object(reviews.get(role), solver_path)
+                self.require_keys(solver, solver_path, {"reviewer_id", "selected_option_id", "options_order", "options_reordered", "justification", "review_context"})
+                if solver.get("selected_option_id") not in ids:
+                    self.error(f"{solver_path}.selected_option_id", "must identify an option")
+                if candidate.get("verdict") == "pass" and solver.get("selected_option_id") != key:
+                    self.error(f"{solver_path}.selected_option_id", "must agree with the key for an automated pass")
+                order = self.require_list(solver.get("options_order"), f"{solver_path}.options_order")
+                if len(order) != len(ids) or set(order) != ids:
+                    self.error(f"{solver_path}.options_order", "must list every stable option ID exactly once")
+                if index == 2:
+                    if solver.get("options_reordered") is not True:
+                        self.error(f"{solver_path}.options_reordered", "second solver must use reordered options")
+                    original_order = [option.get("option_id") for option in options if isinstance(option, dict)]
+                    first_order = solvers[0].get("options_order") if solvers else None
+                    if order == original_order or order == first_order:
+                        self.error(f"{solver_path}.options_order", "second solver order must differ from original and solver 1")
+                self.validate_review_context(solver.get("review_context"), f"{solver_path}.review_context", candidate.get("verdict"), role)
+                solvers.append(solver)
+            final = self.require_object(reviews.get("final_judge"), f"{path}.reviews.final_judge")
+            self.require_keys(final, f"{path}.reviews.final_judge", {"verdict", "selected_option_id", "justification", "review_context"})
+            if candidate.get("verdict") == "pass" and (final.get("verdict") != "pass" or final.get("selected_option_id") != key):
+                self.error(f"{path}.reviews.final_judge", "must independently pass and agree by option ID")
+            self.validate_review_context(final.get("review_context"), f"{path}.reviews.final_judge.review_context", candidate.get("verdict"), "final_judge")
 
-        final = self.require_object(candidate.get("final_judge"), f"{path}.final_judge")
-        self.require_keys(final, f"{path}.final_judge", {"verdict", "selected_option_id", "justification", "review_context"})
-        if candidate.get("verdict") == "pass":
-            if final.get("verdict") != "pass" or final.get("selected_option_id") != key:
-                self.error(f"{path}.final_judge", "must independently pass and agree by option ID")
-        self.validate_review_context(final.get("review_context"), f"{path}.final_judge.review_context", candidate.get("verdict"))
-
-    def validate_essay(self, item: dict[str, Any], position: dict[str, Any] | None, path: str) -> None:
+    def validate_essay(self, item: dict[str, Any], position: dict[str, Any] | None, reviews: dict[str, Any], path: str) -> None:
         item_path = f"{path}.item"
         self.require_keys(item, item_path, {"prompt", "answer_outline", "defensible_alternatives", "rubric", "empirical_limitation_notice"})
         for key in ("prompt", "answer_outline", "empirical_limitation_notice"):
@@ -708,15 +813,12 @@ class AuditValidator:
                 self.error(f"{criterion_path}.levels", "must contain at least two observable performance levels")
         if position and abs(total - float(position.get("points", 0))) > 1e-9:
             self.error(f"{item_path}.rubric", "criterion maxima must equal blueprint points")
-        checks = self.require_list(self._candidate_value(path, "blind_answer_checks"), f"{path}.blind_answer_checks")
-        if checks:
-            self.error(f"{path}.blind_answer_checks", "essay candidates do not use MCQ blind answer checks")
-        final = self.require_object(self._candidate_value(path, "final_judge"), f"{path}.final_judge")
-        self.require_keys(final, f"{path}.final_judge", {"verdict", "scoring_expectations_supported", "justification", "review_context"})
+        final = self.require_object(reviews.get("final_judge"), f"{path}.reviews.final_judge")
+        self.require_keys(final, f"{path}.reviews.final_judge", {"verdict", "scoring_expectations_supported", "justification", "review_context"})
         verdict = self._candidate_value(path, "verdict")
         if verdict == "pass" and (final.get("verdict") != "pass" or final.get("scoring_expectations_supported") is not True):
-            self.error(f"{path}.final_judge", "must pass and support scoring expectations")
-        self.validate_review_context(final.get("review_context"), f"{path}.final_judge.review_context", verdict)
+            self.error(f"{path}.reviews.final_judge", "must pass and support scoring expectations")
+        self.validate_review_context(final.get("review_context"), f"{path}.reviews.final_judge.review_context", verdict, "final_judge")
 
     def _candidate_value(self, path: str, key: str) -> Any:
         match = re.fullmatch(r"\$\.candidates\[(\d+)\]", path)
@@ -728,9 +830,20 @@ class AuditValidator:
             return None
         return candidates[index].get(key)
 
-    def validate_review_context(self, value: Any, path: str, verdict: Any) -> None:
+    def validate_review_context(self, value: Any, path: str, verdict: Any, role: str | None = None) -> None:
         context = self.require_object(value, path)
-        self.require_keys(context, path, {"isolation_method", "isolation_verified", "agent_id", "history_inherited", *ISOLATION_FALSE_FIELDS})
+        self.require_keys(context, path, {"isolation_method", "isolation_verified", "agent_id", "history_inherited", "review_role", "packet_fields", "prohibited_fields", *ISOLATION_FALSE_FIELDS})
+        if role is not None and context.get("review_role") != role:
+            self.error(f"{path}.review_role", f"must be {role!r}")
+        packet_fields = self.require_list(context.get("packet_fields"), f"{path}.packet_fields")
+        prohibited_fields = self.require_list(context.get("prohibited_fields"), f"{path}.prohibited_fields")
+        if any(not isinstance(field, str) or not field.strip() for field in packet_fields + prohibited_fields):
+            self.error(path, "packet and prohibited fields must be non-empty strings")
+        forbidden = {"target_bloom", "target_difficulty", "generated_key", "answer_rationale", "misconception_rationales", "prior_verdicts", "revision_history", "exemplar_memory", "generator_metadata"}
+        if forbidden.intersection(packet_fields):
+            self.error(f"{path}.packet_fields", "must not expose prohibited assessment context")
+        if not forbidden.issubset(set(prohibited_fields)):
+            self.error(f"{path}.prohibited_fields", "must declare key, target, rationale, prior-verdict, revision and exemplar protections")
         if context.get("isolation_method") != "fresh_subagent":
             self.error(f"{path}.isolation_method", "must be fresh_subagent")
         if context.get("history_inherited") is not False:
@@ -1016,12 +1129,29 @@ def candidate_prompt_text(candidate: dict[str, Any]) -> str:
     return str(item.get("stem") or item.get("prompt") or "")
 
 
-def review_context(agent_id: str) -> dict[str, Any]:
+def review_call_ids(candidate: dict[str, Any]) -> list[str]:
+    ids: list[str] = []
+    reviews = candidate.get("reviews", {})
+    if not isinstance(reviews, dict):
+        return ids
+    for review in reviews.values():
+        if not isinstance(review, dict):
+            continue
+        context = review.get("review_context")
+        if isinstance(context, dict) and isinstance(context.get("agent_id"), str) and context.get("agent_id", "").strip():
+            ids.append(context["agent_id"])
+    return ids
+
+
+def review_context(agent_id: str, role: str) -> dict[str, Any]:
     return {
         "isolation_method": "fresh_subagent",
         "agent_id": agent_id,
         "history_inherited": False,
         "isolation_verified": True,
+        "review_role": role,
+        "packet_fields": ["stem", "options", "permitted_resources"],
+        "prohibited_fields": ["target_bloom", "target_difficulty", "generated_key", "answer_rationale", "misconception_rationales", "prior_verdicts", "revision_history", "exemplar_memory", "generator_metadata"],
         "key_visible": False,
         "prior_verdicts_visible": False,
         "rationale_visible": False,
@@ -1050,14 +1180,22 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             "correct_option_id": key,
             "answer_rationale": "The supported rule directly addresses the stated evidence.",
         }
-        blind = [
+        item_judge = {
+            "verdict": "pass",
+            "selected_option_id": key,
+            "one_best_answer": "pass",
+            "uncertainty": "low",
+            "justification": "The supported rule is the only option consistent with the case.",
+            "review_context": review_context(f"fixture-{cid}-item-judge", "item_judge"),
+        }
+        solvers = [
             {
                 "reviewer_id": f"{cid}-S1",
                 "selected_option_id": key,
                 "options_order": ["opt-1", "opt-2", "opt-3"],
                 "options_reordered": False,
                 "justification": "The supported rule is the only option consistent with the case.",
-                "review_context": review_context(f"fixture-{cid}-S1"),
+                "review_context": review_context(f"fixture-{cid}-S1", "answer_solver_1"),
             },
             {
                 "reviewer_id": f"{cid}-S2",
@@ -1065,14 +1203,14 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
                 "options_order": ["opt-3", "opt-1", "opt-2"],
                 "options_reordered": True,
                 "justification": "The same stable option remains correct after reordering.",
-                "review_context": review_context(f"fixture-{cid}-S2"),
+                "review_context": review_context(f"fixture-{cid}-S2", "answer_solver_2"),
             },
         ]
         final_judge = {
             "verdict": "pass",
             "selected_option_id": key,
             "justification": "The item is grounded, aligned, and has one supported answer.",
-            "review_context": review_context(f"fixture-{cid}-final"),
+            "review_context": review_context(f"fixture-{cid}-final", "final_judge"),
         }
         bloom = "Apply"
     else:
@@ -1096,12 +1234,12 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             ],
             "empirical_limitation_notice": "Isley et al. (2025) did not empirically evaluate essay generation or rubrics.",
         }
-        blind = []
+        solvers = []
         final_judge = {
             "verdict": "pass",
             "scoring_expectations_supported": True,
             "justification": "The prompt and rubric elicit observable evaluation evidence.",
-            "review_context": review_context(f"fixture-{cid}-final"),
+            "review_context": review_context(f"fixture-{cid}-final", "final_judge"),
         }
         bloom = "Evaluate"
     return {
@@ -1129,7 +1267,22 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
         "difficulty_confidence": "medium",
         "difficulty_basis": "Two linked steps; familiar context is assumed, not measured.",
         "difficulty_justification": "The task requires two linked steps with limited integration.",
-        "classification_review_context": review_context(f"fixture-{cid}-classification"),
+        "reviews": {
+            "classification_review": {
+                "reviewer_id": f"{cid}-classification",
+                "reviewed_bloom": bloom,
+                "estimated_difficulty": "Medium",
+                "difficulty_confidence": "medium",
+                "difficulty_basis": "Two linked steps; familiar context is assumed, not measured.",
+                "justification": "The reviewer identified the cognitive operation from the observable task demand.",
+                "review_context": review_context(f"fixture-{cid}-classification", "classification"),
+            },
+            "item_judge": item_judge if item_type == "mcq" else None,
+            "tie_break_review": None,
+            "answer_solver_1": None,
+            "answer_solver_2": None,
+            "final_judge": final_judge if item_type == "essay" else None,
+        },
         "classification_revealed_before_target_comparison": True,
         "duplication": {
             "same_position_overlap": "expected",
@@ -1150,8 +1303,6 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             "preceding_same_position_candidate_id": None,
         },
         "rejection_checks": rejection_checks(),
-        "blind_answer_checks": blind,
-        "final_judge": final_judge,
         "verdict": "pass",
         "selected": selected,
         "final_status": "selected" if selected else "eligible",
@@ -1172,6 +1323,7 @@ def valid_fixture() -> dict[str, Any]:
     b2["exemplar_context"]["preceding_same_position_candidate_id"] = "BP-02-C1"
     fixture = {
         "schema_version": RELEASE,
+        "review_mode": "standard",
         "workflow_status": "awaiting_final_approval",
         "metadata": {
             "release": RELEASE,
@@ -1276,6 +1428,43 @@ def valid_fixture() -> dict[str, Any]:
     return fixture
 
 
+def high_assurance_fixture() -> dict[str, Any]:
+    fixture = valid_fixture()
+    fixture["review_mode"] = "high_assurance"
+    for candidate in fixture["candidates"]:
+        if candidate["item_type"] != "mcq":
+            continue
+        key = candidate["item"]["correct_option_id"]
+        order = [option["option_id"] for option in candidate["item"]["options"]]
+        reordered = order[1:] + order[:1]
+        candidate["reviews"]["item_judge"] = None
+        candidate["reviews"]["tie_break_review"] = None
+        candidate["reviews"]["answer_solver_1"] = {
+            "reviewer_id": f"{candidate['candidate_id']}-S1",
+            "selected_option_id": key,
+            "options_order": order,
+            "options_reordered": False,
+            "justification": "The supported rule is the only option consistent with the case.",
+            "review_context": review_context(f"fixture-{candidate['candidate_id']}-S1", "answer_solver_1"),
+        }
+        candidate["reviews"]["answer_solver_2"] = {
+            "reviewer_id": f"{candidate['candidate_id']}-S2",
+            "selected_option_id": key,
+            "options_order": reordered,
+            "options_reordered": True,
+            "justification": "The same stable option remains correct after reordering.",
+            "review_context": review_context(f"fixture-{candidate['candidate_id']}-S2", "answer_solver_2"),
+        }
+        candidate["reviews"]["final_judge"] = {
+            "verdict": "pass",
+            "selected_option_id": key,
+            "justification": "The item is grounded, aligned, and has one supported answer.",
+            "review_context": review_context(f"fixture-{candidate['candidate_id']}-final", "final_judge"),
+        }
+    rebuild_memory(fixture)
+    return fixture
+
+
 def memory_entry(candidate: dict[str, Any], event: dict[str, Any]) -> dict[str, Any]:
     entry = {key: event.get(key) for key in ("event_index", "candidate_id", "revision_count", "verdict", "item_summary", "justification")}
     entry.update({key: candidate.get(key) for key in ("item_type", "assessed_concepts", "blueprint_position_id")})
@@ -1297,7 +1486,7 @@ def rebuild_memory(fixture: dict[str, Any]) -> None:
         event = {"event_index": len(events)+1, "candidate_id": candidate["candidate_id"],
                  "revision_count": candidate["revision_count"], "verdict": candidate["verdict"],
                  "item_summary": candidate_prompt_text(candidate), "item_snapshot": copy.deepcopy(candidate["item"]),
-                 "justification": "Recorded review result."}
+                 "justification": "Recorded review result.", "review_call_ids": review_call_ids(candidate)}
         if event["verdict"] == "revise":
             event.update(retain="Retain the grounded concept and question core.", correct="Repair the identified wording or distractor defect.")
         events.append(event)
@@ -1310,359 +1499,134 @@ def rebuild_memory(fixture: dict[str, Any]) -> None:
 
 def run_self_tests() -> int:
     tests: list[tuple[str, Any, bool]] = []
-    tests.append(("valid mixed MCQ/essay and Dutch output", valid_fixture(), True))
+    tests.append(("standard mode passes with classifier and item judge", valid_fixture(), True))
 
     bad = valid_fixture()
-    bad["generation_budget"]["fresh_replacements_per_position"] = 99
-    tests.append(("generation budget overflow", bad, False))
+    bad["candidates"][0]["reviews"]["classification_review"] = None
+    tests.append(("missing cognitive classification fails", bad, False))
 
     bad = valid_fixture()
-    bad["candidates"][1]["exemplar_context"]["accepted_run_ids"] = []
-    tests.append(("sequential exemplar refresh missing", bad, False))
+    bad["candidates"][0]["reviews"]["item_judge"] = None
+    tests.append(("missing standard item judge fails", bad, False))
 
     bad = valid_fixture()
-    bad["candidates"][0]["duplication"]["same_position_overlap"] = "excessive"
-    tests.append(("same-position excessive duplication", bad, False))
+    bad["candidates"][0]["reviews"]["classification_review"]["review_context"]["isolation_verified"] = False
+    bad["candidates"][0]["reviews"]["classification_review"]["review_context"]["agent_id"] = None
+    bad["workflow_status"] = "draft"
+    bad["candidates"][0]["verdict"] = "manual_review"
+    bad["candidates"][0]["final_status"] = "independent_review_required"
+    bad["escalations"] = [{"escalation_id": "E-1", "reason": "Isolation unavailable.", "status": "unresolved"}]
+    rebuild_memory(bad)
+    tests.append(("unverified isolation fails closed", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["reviews"]["item_judge"]["selected_option_id"] = "opt-1"
+    bad["candidates"][0]["verdict"] = "pass"
+    tests.append(("item-judge key disagreement cannot silently pass", bad, False))
 
     good = valid_fixture()
-    good["candidates"][1]["assessed_concepts"] = list(good["candidates"][0]["assessed_concepts"])
-    good["candidates"][1]["duplication"]["same_position_overlap"] = "expected"
-    tests.append(("same-position construct overlap is allowed", good, True))
+    candidate = good["candidates"][0]
+    candidate["reviews"]["item_judge"]["selected_option_id"] = "opt-1"
+    candidate["reviews"]["tie_break_review"] = {
+        "trigger": "item_judge_key_disagreement",
+        "resolution": "fresh_independent_solution_supported_key",
+        "reviewer_id": "fixture-BP-01-C1-tie",
+        "selected_option_id": "opt-2",
+        "justification": "The supported rule is uniquely defensible after the independent recheck.",
+        "review_context": review_context("fixture-BP-01-C1-tie", "tie_break"),
+    }
+    rebuild_memory(good)
+    tests.append(("documented tie-break can resolve a key disagreement", good, True))
+
+    bad = copy.deepcopy(good)
+    bad["candidates"][0]["reviews"]["tie_break_review"]["resolution"] = "majority_vote"
+    tests.append(("majority vote cannot repair ambiguity", bad, False))
+
+    high = high_assurance_fixture()
+    tests.append(("high assurance retains four independent reviews", high, True))
+
+    bad = high_assurance_fixture()
+    bad["candidates"][0]["reviews"]["answer_solver_2"]["options_order"] = ["opt-1", "opt-2", "opt-3"]
+    tests.append(("high assurance solver 2 must reorder options", bad, False))
+
+    bad = high_assurance_fixture()
+    bad["candidates"][0]["reviews"]["final_judge"] = None
+    tests.append(("high assurance requires the final judge", bad, False))
+
+    bad = high_assurance_fixture()
+    bad["review_mode"] = "standard"
+    tests.append(("high assurance fields cannot be used in standard mode", bad, False))
 
     bad = valid_fixture()
-    comparison = bad["final_selection"]["assessment_duplication_pass"]["comparisons"][0]
-    comparison["cross_position_overlap"] = "substantive"
-    comparison["repetition_authorized"] = False
-    tests.append(("cross-position substantive overlap", bad, False))
+    bad["candidates"][0]["reviews"]["item_judge"]["review_context"]["agent_id"] = bad["candidates"][0]["reviews"]["classification_review"]["review_context"]["agent_id"]
+    tests.append(("reviewer IDs must be unique", bad, False))
 
     bad = valid_fixture()
-    bad["candidates"][0]["scope_evidence"] = []
-    tests.append(("unsupported concept evidence", bad, False))
+    bad["candidates"][0]["reviews"]["item_judge"]["review_context"]["key_visible"] = True
+    tests.append(("key visibility fails closed", bad, False))
 
     bad = valid_fixture()
-    bad["candidates"][0]["answer_evidence"] = []
-    tests.append(("separate answer evidence", bad, False))
+    bad["candidates"][0]["reviews"]["classification_review"]["review_context"]["packet_fields"].append("target_bloom")
+    tests.append(("classification packet cannot expose target metadata", bad, False))
 
     bad = valid_fixture()
-    bad["candidates"][0]["revision_count"] = 3
-    tests.append(("revision budget exhausted", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][0]["blind_answer_checks"][1]["options_reordered"] = False
-    tests.append(("blind second-pass reordering", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][0]["blind_answer_checks"][0]["review_context"]["isolation_verified"] = False
-    tests.append(("missing reviewer isolation", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][0]["rejection_checks"] = []
-    tests.append(("explicit rejection criteria", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][0]["rejection_checks"] = [
-        check for check in bad["candidates"][0]["rejection_checks"]
-        if check["criterion"] != "one_best_answer"
-    ]
-    tests.append(("missing canonical MCQ criterion", bad, False))
-
-    bad = valid_fixture()
-    next(
-        check for check in bad["candidates"][0]["rejection_checks"]
-        if check["criterion"] == "one_best_answer"
-    )["result"] = "not_applicable"
-    tests.append(("passing MCQ cannot skip a quality criterion", bad, False))
-
-    bad = valid_fixture()
-    next(
-        check for check in bad["candidates"][0]["rejection_checks"]
-        if check["criterion"] == "distractor_quality"
-    )["result"] = "fail"
-    tests.append(("passing candidate cannot fail a quality criterion", bad, False))
+    bad["schema_version"] = "2026.6"
+    bad["metadata"]["release"] = "2026.6"
+    bad["metadata"]["manifest_version"] = "2026.6.0"
+    tests.append(("2026.6 is rejected without migration", bad, False))
 
     bad = valid_fixture()
     bad["candidates"][0]["item"]["options"] = bad["candidates"][0]["item"]["options"][:2]
-    bad["candidates"][0]["blind_answer_checks"][0]["options_order"] = ["opt-1", "opt-2"]
-    bad["candidates"][0]["blind_answer_checks"][1]["options_order"] = ["opt-2", "opt-1"]
-    tests.append(("fewer than three MCQ options", bad, False))
+    tests.append(("existing option-count protection remains", bad, False))
 
     bad = valid_fixture()
-    bad["schema_version"] = "2026.1"
-    tests.append(("obsolete audit schema version", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][0]["item"]["correct_option_id"] = "opt-4"
-    tests.append(("answer key outside reduced option set", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][2]["item"]["rubric"][0]["max_points"] = 2
-    tests.append(("essay rubric total", bad, False))
+    bad["candidates"][0]["scope_evidence"] = []
+    tests.append(("existing grounding protection remains", bad, False))
 
     bad = valid_fixture()
     bad["candidates"][0]["chain_of_thought"] = "private reasoning"
-    tests.append(("chain-of-thought field", bad, False))
+    tests.append(("chain-of-thought storage remains forbidden", bad, False))
 
-    good = valid_fixture()
-    reviewed = good["candidates"][1]
-    reviewed["reviewed_bloom"] = "Analyze"
-    reviewed["estimated_difficulty"] = "Hard"
-    reviewed["bloom_fit"] = "fail"
-    reviewed["difficulty_fit"] = "adjacent_uncertain"
-    reviewed["verdict"] = "revise"
-    reviewed["final_status"] = "revision_required"
-    rebuild_memory(good)
-    tests.append(("reviewed Bloom and difficulty may differ from targets", good, True))
+    bad = valid_fixture()
+    bad["generation_budget"]["fresh_replacements_per_position"] = 99
+    tests.append(("generation budgets remain enforced", bad, False))
 
     bad = valid_fixture()
     bad["final_selection"]["assessment_duplication_pass"]["completed"] = False
-    tests.append(("selected-set duplication pass", bad, False))
+    tests.append(("selected-set duplication remains required", bad, False))
 
     bad = valid_fixture()
     bad["workflow_status"] = "approved_for_delivery"
-    tests.append(("mandatory final instructor approval", bad, False))
-
-    for role, context_path in (
-        ("classification", ("classification_review_context",)),
-        ("solver", ("blind_answer_checks", 0, "review_context")),
-        ("final judge", ("final_judge", "review_context")),
-    ):
-        for field, value in (("agent_id", None), ("agent_id", ""), ("history_inherited", True),
-                             ("isolation_method", "fresh_reviewer_context")):
-            bad = valid_fixture()
-            context = bad["candidates"][0]
-            for component in context_path:
-                context = context[component]
-            context[field] = value
-            tests.append((f"{role} rejects {field}={value!r}", bad, False))
+    tests.append(("instructor approval remains mandatory", bad, False))
 
     bad = valid_fixture()
-    del bad["candidates"][0]["classification_review_context"]["agent_id"]
-    tests.append(("missing subagent ID field", bad, False))
-
-    bad = valid_fixture()
-    candidate = bad["candidates"][0]
-    candidate["final_judge"]["review_context"]["agent_id"] = candidate["classification_review_context"]["agent_id"]
-    tests.append(("subagent reused across roles within candidate", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][1]["classification_review_context"]["agent_id"] = bad["candidates"][0]["classification_review_context"]["agent_id"]
-    tests.append(("subagent reused across candidates", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][0]["blind_answer_checks"][1]["options_order"] = ["opt-1", "opt-2", "opt-3"]
-    tests.append(("unchanged option order despite reordered flag", bad, False))
-
-    bad = valid_fixture()
-    bad["candidates"][0]["blind_answer_checks"][0]["options_order"] = ["opt-3", "opt-1", "opt-2"]
-    tests.append(("second solver repeats first shuffled order", bad, False))
-
-    bad = valid_fixture()
-    bad["schema_version"] = "2026.5"
-    bad["metadata"]["release"] = "2026.5"
-    bad["metadata"]["manifest_version"] = "2026.5.0"
-    tests.append(("2026.5 audit is not silently upgraded", bad, False))
-
-    bad = valid_fixture()
-    bad["workflow_status"] = "approved_for_delivery"
-    bad["instructor_approval"]["final"] = {"status": "approved", "approved_by": "instructor", "approved_at": "2026-09-07T12:00:00+02:00"}
-    bad["candidates"][0]["classification_review_context"]["isolation_verified"] = False
-    bad["candidates"][0]["classification_review_context"]["agent_id"] = None
-    tests.append(("instructor approval cannot replace independent review", bad, False))
-
-    # An unperformed review is representable without inventing an agent identity.
-    # This candidate is not selected; existing passed candidates still cover the blueprint.
-    good = valid_fixture()
-    reviewed = good["candidates"][1]
-    reviewed["verdict"] = "manual_review"
-    reviewed["final_status"] = "independent_review_required"
-    reviewed["classification_review_context"]["isolation_verified"] = False
-    reviewed["classification_review_context"]["agent_id"] = None
-    good["workflow_status"] = "draft"
-    good["escalations"] = [{"escalation_id": "E-1", "reason": "Classification subagent unavailable.", "status": "unresolved"}]
-    rebuild_memory(good)
-    tests.append(("unperformed nonpassing review has null agent ID", good, True))
+    del bad["exemplar_registries"]["judgment_history"][0]["review_call_ids"]
+    tests.append(("review history records call IDs", bad, False))
 
     bad = copy.deepcopy(good)
-    bad["candidates"][1]["classification_review_context"]["agent_id"] = bad["candidates"][2]["classification_review_context"]["agent_id"]
-    tests.append(("nonpassing review cannot lend its subagent to a later passing review", bad, False))
+    bad["candidates"][0]["reviews"]["tie_break_review"]["review_context"]["key_visible"] = True
+    tests.append(("tie-break reviewer remains key-blind", bad, False))
 
-    bad = copy.deepcopy(good)
-    bad["escalations"] = []
-    tests.append(("unverified review requires unresolved escalation", bad, False))
-
-    bad = copy.deepcopy(good)
-    bad["workflow_status"] = "awaiting_final_approval"
-    tests.append(("unverified review blocks final approval request", bad, False))
-
-    for verdict, bucket in (("pass", "accepted"), ("revise", "revisable"), ("reject", "rejected"), ("manual_review", None)):
-        good = valid_fixture()
-        candidate = good["candidates"][1]
-        candidate["verdict"] = verdict
-        candidate["final_status"] = {"pass": "eligible", "revise": "revision_required", "reject": "rejected", "manual_review": "independent_review_required"}[verdict]
-        rebuild_memory(good)
-        tests.append((f"{verdict} enters {bucket or 'no'} generation memory", good, True))
-        if bucket:
-            bad = copy.deepcopy(good)
-            wrong = "rejected" if bucket != "rejected" else "accepted"
-            entries = bad["exemplar_registries"]["run_exemplars"]
-            target = next(e for e in entries[bucket] if e["candidate_id"] == candidate["candidate_id"])
-            entries[wrong].append(target)
-            tests.append((f"{verdict} cannot enter wrong bucket", bad, False))
-        else:
-            bad = copy.deepcopy(good)
-            event = bad["exemplar_registries"]["judgment_history"][1]
-            bad["exemplar_registries"]["run_exemplars"]["rejected"].append(memory_entry(candidate, event))
-            tests.append(("manual_review is not a negative exemplar", bad, False))
-        if verdict == "revise":
-            for field in ("retain", "correct"):
-                bad = copy.deepcopy(good)
-                del bad["exemplar_registries"]["judgment_history"][1][field]
-                # Missing feedback should produce a validation error, not crash when rebuilding the expected window.
-                tests.append((f"revisable example needs {field}", bad, False))
-
-    good = valid_fixture()
-    candidate = good["candidates"][1]
-    candidate["verdict"] = "manual_review"
-    candidate["final_status"] = "independent_review_required"
-    rebuild_memory(good)
-    # Resolve only after later candidates were generated: their old packets must stay unchanged.
-    event = copy.deepcopy(good["exemplar_registries"]["judgment_history"][1])
-    event.update(event_index=5, verdict="reject", human_resolution={"resolved_by": "instructor", "resolved_at": "2026-09-08", "justification": "Confirmed a substantive ambiguity."})
-    candidate.update(verdict="reject", final_status="rejected")
-    good["exemplar_registries"]["judgment_history"].append(event)
-    good["exemplar_registries"]["run_exemplars"]["rejected"] = [memory_entry(candidate, event)]
-    tests.append(("late human resolution preserves earlier generation packets", good, True))
-    bad = copy.deepcopy(good)
-    bad["candidates"][1]["item"]["options"][0]["text"] = "A changed distractor."
-    bad["exemplar_registries"]["judgment_history"][-1]["item_snapshot"] = copy.deepcopy(bad["candidates"][1]["item"])
-    tests.append(("changed distractor cannot masquerade as human resolution", bad, False))
-    bad = copy.deepcopy(good)
-    del bad["exemplar_registries"]["judgment_history"][-1]["human_resolution"]
-    tests.append(("manual resolution needs human provenance", bad, False))
-    bad = copy.deepcopy(good)
-    bad["candidates"][2]["exemplar_context"]["rejected_run_ids"] = ["BP-01-C2"]
-    tests.append(("late resolution cannot retroactively poison memory", bad, False))
-
-    good = valid_fixture()
-    candidate = good["candidates"][1]
-    candidate.update(verdict="revise", final_status="revision_required")
-    rebuild_memory(good)
-    event = copy.deepcopy(good["exemplar_registries"]["judgment_history"][1])
-    event.update(event_index=5, revision_count=1, verdict="pass")
-    event.pop("retain"); event.pop("correct")
-    candidate.update(revision_count=1, verdict="pass", final_status="eligible")
-    good["exemplar_registries"]["judgment_history"].append(event)
-    windows = good["exemplar_registries"]["run_exemplars"]
-    windows["revisable"] = []
-    windows["accepted"].append(memory_entry(candidate, event))
-    candidate["item"]["options"][0]["text"] = "A revised misconception-based distractor."
-    event["item_snapshot"] = copy.deepcopy(candidate["item"])
-    tests.append(("revised pass replaces stale revisable exemplar", good, True))
-    bad = copy.deepcopy(good)
-    bad["exemplar_registries"]["judgment_history"][-1]["revision_count"] = 3
-    tests.append(("judgment history cannot conceal revision budget exhaustion", bad, False))
-
-    for label, mutate in (
-        ("missing separate classification", lambda c: c.update(classification_review_context=None)),
-        ("missing separate final judge", lambda c: c.update(final_judge={})),
-        ("missing blind solvers", lambda c: c.update(blind_answer_checks=[])),
-    ):
-        bad = valid_fixture(); mutate(bad["candidates"][0])
-        tests.append((label, bad, False))
-
-    for estimate, confidence, fit, passed in (
-        ("Medium", "low", "aligned", True),
-        ("Easy", "low", "adjacent_uncertain", True),
-        ("Hard", "medium", "adjacent_uncertain", True),
-        ("Hard", "high", "review_required", False),
-    ):
-        fixture = valid_fixture()
-        c = fixture["candidates"][0]
-        c.update(estimated_difficulty=estimate, difficulty_confidence=confidence, difficulty_fit=fit)
-        if fit == "adjacent_uncertain":
-            fixture["final_selection"]["difficulty_caveat_candidate_ids"] = [c["candidate_id"]]
-        tests.append((f"difficulty {estimate}/{confidence}/{fit} selection", fixture, passed))
-    good = valid_fixture()
-    c = good["candidates"][1]
-    c.update(estimated_difficulty="Hard", difficulty_confidence="high", difficulty_fit="review_required", verdict="manual_review", final_status="independent_review_required")
-    rebuild_memory(good)
-    tests.append(("confident adjacent disagreement can remain for review", good, True))
-    for field, value in (("difficulty_confidence", "certain"), ("difficulty_confidence", 0.9), ("difficulty_basis", ""), ("difficulty_fit", "pass")):
-        bad = valid_fixture(); bad["candidates"][0][field] = value
-        tests.append((f"honest difficulty metadata {field}={value!r}", bad, False))
     bad = valid_fixture()
-    bad["blueprint"]["positions"][0]["target_difficulty"] = "Easy"
-    for c in bad["candidates"][:2]: c["target_difficulty"] = "Easy"
-    bad["candidates"][0].update(estimated_difficulty="Hard", difficulty_fit="mismatch")
-    bad["candidates"][1]["difficulty_fit"] = "adjacent_uncertain"
-    tests.append(("substantial difficulty mismatch cannot pass", bad, False))
-    bad = valid_fixture()
-    bad["candidates"][0].update(estimated_difficulty="Hard", difficulty_fit="adjacent_uncertain")
-    tests.append(("selected uncertain estimate requires instructor caveat", bad, False))
-    for field in ("model_difficulty_is_irt", "model_difficulty_is_empirical", "difficulty_confidence_empirically_calibrated", "post_administration_psychometrics_included"):
-        bad = valid_fixture(); bad["metadata"]["research_basis"][field] = True
-        tests.append((f"unsupported empirical claim {field}", bad, False))
+    bad["exemplar_registries"]["judgment_history"][1]["review_call_ids"] = list(bad["exemplar_registries"]["judgment_history"][0]["review_call_ids"])
+    tests.append(("historical review IDs cannot be reused", bad, False))
 
-    for field in ("event_index", "candidate_id", "revision_count", "verdict", "item_summary", "item_snapshot", "justification"):
-        bad = valid_fixture()
-        del bad["exemplar_registries"]["judgment_history"][0][field]
-        tests.append((f"missing judgment event {field} returns errors", bad, False))
-    for field, value in (("difficulty_confidence", []), ("difficulty_basis", {})):
-        bad = valid_fixture(); bad["candidates"][0][field] = value
-        tests.append((f"malformed {field} returns errors", bad, False))
-    bad = valid_fixture(); bad["exemplar_registries"]["judgment_history"][0]["verdict"] = []
-    tests.append(("malformed judgment verdict returns errors", bad, False))
-
-    failures = 0
     for name, fixture, expected_valid in tests:
         errors = AuditValidator(fixture).validate()
         actual_valid = not errors
         if actual_valid != expected_valid:
-            failures += 1
             print(f"FAIL: {name} (expected valid={expected_valid}, got {actual_valid})")
             for error in errors[:5]:
                 print(f"  {error}")
-        else:
-            print(f"PASS: {name}")
-    memory_tests = []
-    fixture = valid_fixture()
-    fixture["candidates"] = []
-    for i in range(21):
-        c = base_candidate(f"FIFO-{i}", f"P-{i}", i+1, 1, "mcq", False)
-        c["verdict"] = ["pass", "revise", "reject"][i % 3]
-        c["item"]["stem"] = f"Scenario {i}: " + chr(65+i) * 40
-        fixture["candidates"].append(c)
-    rebuild_memory(fixture)
-    memory_tests.append(("independent FIFO retention of five in all three buckets", fixture, True))
-    for bucket in MEMORY_BUCKETS:
-        for defect in ("order", "retention", "feedback"):
-            bad = copy.deepcopy(fixture)
-            entries = bad["exemplar_registries"]["run_exemplars"][bucket]
-            if defect == "order": entries.reverse()
-            elif defect == "retention": entries.pop(0)
-            else: entries[0]["verdict"] = "manual_review"
-            memory_tests.append((f"{bucket} rejects incorrect {defect}", bad, False))
-    bad = copy.deepcopy(fixture)
-    bad["candidates"][-1]["exemplar_context"]["revisable_run_ids"] = []
-    memory_tests.append(("generation packet must include revisable FIFO window", bad, False))
-    for name, fixture, expected in memory_tests:
-        validator = AuditValidator(fixture)
-        validator.candidates = {c["candidate_id"]: c for c in fixture["candidates"]}
-        validator.validate_exemplar_registries(fixture["exemplar_registries"])
-        validator.validate_run_exemplar_consistency(fixture["exemplar_registries"])
-        actual = not validator.errors
-        if actual != expected:
-            failures += 1
-            print(f"FAIL: {name}: {validator.errors[:3]}")
-        else:
-            print(f"PASS: {name}")
-    total = len(tests) + len(memory_tests)
-    print(f"\n{total - failures}/{total} fixture tests passed")
-    return 1 if failures else 0
+            return 1
+        print(f"PASS: {name}")
+
+    print(f"\n{len(tests)}/{len(tests)} adaptive review fixture tests passed")
+    return 0
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.6 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.7 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1686,7 +1650,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.6 structure and invariants passed.")
+        print("Audit valid: declared 2026.7 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

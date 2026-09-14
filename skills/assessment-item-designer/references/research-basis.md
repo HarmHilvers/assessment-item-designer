@@ -10,7 +10,7 @@ This plugin credits the paper supplied with its design brief and the accompanyin
 - Paper identifier: <https://arxiv.org/abs/2508.08314>
 - Replication repository: <https://github.com/calisley/ai_exams>
 
-The plugin adapts the pre-administration question-generation procedure described by Isley et al. (2025), particularly its course-bounded generation, iterative generate–judge–refine loop, use of accepted and rejected examples, and separate final judging stage. It extends that procedure with assessment blueprints, revised Bloom classification, source-evidence requirements, blind answer verification, deterministic validation, bounded revision, and mandatory instructor approval. The plugin does not reproduce the study’s post-administration psychometric validation, and the study’s empirical findings apply directly to multiple-choice items rather than the essay workflow introduced here.
+The plugin adapts the pre-administration question-generation procedure described by Isley et al. (2025), particularly its course-bounded generation, iterative generate–judge–refine loop, use of accepted and rejected examples, and separate judging stages. It extends that procedure with assessment blueprints, revised Bloom classification, source-evidence requirements, context-isolated role separation, adaptive escalation, deterministic validation, bounded revision, and mandatory instructor approval. The plugin does not reproduce the study’s post-administration psychometric validation, and the study’s empirical findings apply directly to multiple-choice items rather than the essay workflow introduced here.
 
 ## What is adapted
 
@@ -46,7 +46,7 @@ The paper's §3.1 describes generating 20 accepted items and selecting the ten j
 
 The accepted/revisable/rejected memory semantics are our extension. `revise` preserves a useful concept while identifying a correctable defect; it is not a generic bad example. Unresolved human-review cases are excluded from generation memory. An immutable judgment history preserves what was known before each generation call, including later revisions and human resolutions.
 
-All candidates still use separate independent classification and final reviewers; MCQs additionally use two blind answer solvers. The paper does not validate this particular isolation architecture, three-category memory, confidence policy or their effect on assessment quality.
+All candidates use context-isolated role separation. Standard MCQs use a target-blind classifier and key-blind item judge, with adaptive escalation to a third key-blind reviewer when uncertainty or disagreement warrants it. High-assurance MCQs retain two blind answer solvers and a final judge; essays use a classifier and independent final/scoring judge. The paper does not validate this particular isolation architecture, adaptive reviewer count, three-category memory, confidence policy or their effect on assessment quality.
 
 ## Empirical scope
 
@@ -55,7 +55,7 @@ The study's direct empirical evidence concerns short, college-level multiple-cho
 - essay generation;
 - revised Bloom classification;
 - analytic rubrics;
-- blind answer verification as specified here;
+- context-isolated reviewer roles and high-assurance answer verification as specified here;
 - blueprint conformance controls;
 - human approval gates.
 
@@ -63,7 +63,7 @@ The study names open-response questions as a possible future extension. Do not c
 
 Model-estimated difficulty is a pre-administration judgment, not an empirical calibration. IRT difficulty is estimated from student-response data. The two must remain distinct in language and audit fields. The finding that generated items were empirically easier also cautions against treating a model's difficulty label as measurement evidence.
 
-Release 2026.6 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses.
+Release 2026.7 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses. Additional high-assurance reviewers provide procedural assurance, but their marginal psychometric benefit has not been established here. Independent LLM agreement is not empirical validation.
 
 ## MCQ item-writing evidence
 

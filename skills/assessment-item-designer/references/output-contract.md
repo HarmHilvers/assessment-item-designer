@@ -29,7 +29,8 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.6",
+  "schema_version": "2026.7",
+  "review_mode": "standard",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
   "blueprint": {},
@@ -48,8 +49,8 @@ Required fields:
 
 ```json
 {
-  "release": "2026.6",
-  "manifest_version": "2026.6.0",
+  "release": "2026.7",
+  "manifest_version": "2026.7.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {
@@ -129,12 +130,13 @@ There may be at most five calibration examples and five retained entries in each
   "item_summary": "The complete stem or prompt at this judgment",
   "item_snapshot": {},
   "justification": "One distractor is implausible.",
+  "review_call_ids": ["actual-runtime-agent-id-1", "actual-runtime-agent-id-2"],
   "retain": "The grounded application and scenario are useful.",
   "correct": "Replace the implausible distractor with a realistic misconception."
 }
 ```
 
-Indices are contiguous from one. Each candidate starts at revision zero; a revised item advances one revision, to at most two. `retain` and `correct` are mandatory for revise events and each contain 1–500 characters. The summary preserves the stem/prompt. `item_snapshot` is a deep copy of the full `item` object for that version, including options/keys or essay outline/rubric (the empty object above is only a schema placeholder). This snapshot allows historical examples to retain their original content after a distractor or scoring expectation changes. It is audit/generator data and must never be passed wholesale to blind reviewers. The last event must match the candidate's current verdict, revision and complete item.
+Indices are contiguous from one. Each candidate starts at revision zero; a revised item advances one revision, to at most two. `retain` and `correct` are mandatory for revise events and each contain 1–500 characters. `review_call_ids` records the actual runtime agent IDs used for that item version and must be unique across candidates and revisions. The summary preserves the stem/prompt. `item_snapshot` is a deep copy of the full `item` object for that version, including options/keys or essay outline/rubric (the empty object above is only a schema placeholder). This snapshot allows historical examples to retain their original content after a distractor or scoring expectation changes. It is audit/generator data and must never be passed wholesale to blind reviewers. The last event must match the candidate's current verdict, revision, complete item and current review-call IDs.
 
 A same-revision event is permitted only to resolve a previous `manual_review` into pass, revise or reject. It requires `human_resolution` containing non-empty `resolved_by`, `resolved_at` and `justification`. The full item snapshot must be unchanged, including answer options and rationales. This must not bypass the candidate's independent-review or other pass controls. Do not rewrite earlier events after resolution.
 
@@ -183,13 +185,18 @@ Each record requires:
   "difficulty_confidence": "medium",
   "difficulty_basis": "Two linked steps; familiarity is assumed rather than measured.",
   "difficulty_justification": "...",
-  "classification_review_context": {},
+  "reviews": {
+    "classification_review": {},
+    "item_judge": {},
+    "tie_break_review": null,
+    "answer_solver_1": null,
+    "answer_solver_2": null,
+    "final_judge": null
+  },
   "classification_revealed_before_target_comparison": true,
   "duplication": {},
   "exemplar_context": {},
   "rejection_checks": [],
-  "blind_answer_checks": [],
-  "final_judge": {},
   "verdict": "pass",
   "selected": true,
   "final_status": "selected"
@@ -204,7 +211,7 @@ For `item_type: essay`, `item` contains `prompt`, `answer_outline`, `defensible_
 
 Targets and review results are always separate. Use revised Bloom values `Remember`, `Understand`, `Apply`, `Analyze`, `Evaluate`, or `Create`; an MCQ cannot be `Create`. Difficulty values are `Easy`, `Medium`, or `Hard`. Bloom fit is `pass | fail`. Difficulty fit is `aligned | adjacent_uncertain | review_required | mismatch`, following the canonical comparison table in `bloom-framework.md`. Difficulty confidence is `low | medium | high`; basis is a non-empty string of at most 500 characters. None is an empirical parameter.
 
-`classification_review_context` uses the isolated context declaration below. `classification_revealed_before_target_comparison: true` declares that `reviewed_bloom`, `estimated_difficulty`, confidence and basis were recorded before the targets were revealed and fit was calculated. A passing candidate requires Bloom fit `pass` and difficulty fit `aligned` or `adjacent_uncertain`. A non-passing candidate may retain different reviewed and target values as evidence of a genuine independent review.
+`reviews.classification_review` contains the independently returned `reviewed_bloom`, `estimated_difficulty`, `difficulty_confidence`, `difficulty_basis`, a concise `justification`, and the isolated context declaration below. `classification_revealed_before_target_comparison: true` declares that these results were recorded before the targets were revealed and fit was calculated. A passing candidate requires Bloom fit `pass` and difficulty fit `aligned` or `adjacent_uncertain`. A non-passing candidate may retain different reviewed and target values as evidence of a genuine independent review.
 
 `duplication` contains:
 
@@ -254,9 +261,11 @@ Each entry in `rejection_checks` contains `criterion`, `result: pass | fail | no
 
 Use `not_applicable` only for a genuinely inapplicable criterion, including MCQ-only form criteria on essays. A passing candidate cannot contain a failed required check. A passing MCQ must record `pass` for every required criterion and satisfy the canonical checklist in `quality-framework.md`; a criterion label does not prove its semantic truth.
 
-For a passing MCQ, `blind_answer_checks` contains exactly two entries. Each contains `reviewer_id`, `selected_option_id`, `options_order`, `options_reordered`, `justification`, and `review_context`. The second entry has `options_reordered: true` and an actual order different from both the original and solver 1; both agree with the key by stable option ID.
+For a standard MCQ, `reviews.item_judge` contains `verdict`, `selected_option_id`, `one_best_answer`, `uncertainty`, `justification`, and `review_context`. It independently solves the item and must agree with the generated key for an automated pass. `reviews.tie_break_review` is null unless an escalation trigger exists; when present it records `trigger`, `resolution`, the selected option, concise justification and an isolated context. A genuine multi-answer ambiguity cannot be repaired by majority vote.
 
-The `final_judge` contains `verdict`, `selected_option_id` for MCQs or `scoring_expectations_supported` for essays, `justification`, and `review_context`. A passed candidate requires a passing final judge.
+For a high-assurance MCQ, `reviews.answer_solver_1` and `reviews.answer_solver_2` contain `selected_option_id`, `options_order`, `options_reordered`, `justification`, and `review_context`. Solver 2 has `options_reordered: true` and an order different from both the displayed original and solver 1. `reviews.final_judge` is key-blind/history-blind and must agree with the key for an automated pass. Standard MCQs leave these high-assurance fields null; high-assurance MCQs leave `item_judge` and `tie_break_review` null.
+
+For essays, `reviews.final_judge` contains `verdict`, `scoring_expectations_supported`, `justification`, and `review_context`. A passed essay requires a passing final judge.
 
 Every isolated review context uses:
 
@@ -264,8 +273,11 @@ Every isolated review context uses:
 {
   "isolation_method": "fresh_subagent",
   "agent_id": "actual-runtime-agent-id",
+  "review_role": "classification | item_judge | tie_break | answer_solver_1 | answer_solver_2 | final_judge",
   "history_inherited": false,
   "isolation_verified": true,
+  "packet_fields": ["stem", "options", "permitted_resources"],
+  "prohibited_fields": ["target_bloom", "target_difficulty", "generated_key", "answer_rationale", "misconception_rationales", "prior_verdicts", "revision_history", "exemplar_memory", "generator_metadata"],
   "key_visible": false,
   "prior_verdicts_visible": false,
   "rationale_visible": false,
@@ -334,7 +346,7 @@ Justifications should be one or two short sentences and normally no more than 50
 
 ## Schema version
 
-Release/schema 2026.6 uses manifest version 2026.6.0. Earlier audit schemas are rejected without automatic migration; their memory and difficulty semantics must not be silently relabeled.
+Release/schema 2026.7 uses manifest version 2026.7.0. Earlier audit schemas, including 2026.6, are rejected without automatic migration; their memory and difficulty semantics must not be silently relabeled.
 
 ## Deterministic validation boundary
 

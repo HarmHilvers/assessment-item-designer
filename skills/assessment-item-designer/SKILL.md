@@ -8,7 +8,7 @@ license: MIT
 
 Requires fresh subagents without inherited task history, file read/write access, and Python 3.9 or newer.
 
-Release designation: **2026.6**. Manifest version: **2026.6.0**.
+Release designation: **2026.7**. Manifest version: **2026.7.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -30,7 +30,9 @@ Do not present this workflow as a replication of Isley et al. (2025). It is an e
 - Generate and judge candidates sequentially, never as a same-position batch.
 - Refresh `run_exemplars` after every candidate verdict and supply the refreshed memory to the next generation call.
 - Keep targets separate from independent review results.
-- For MCQs, use two fresh, isolated, key-blind answer checks and a separate key-blind, history-blind final judge.
+- For MCQs, default to `review_mode: standard`: one target-blind cognitive classifier and one key-blind independent item judge. Escalate with one fresh tie-break reviewer only when uncertainty or disagreement warrants it.
+- When `review_mode: high_assurance` is explicitly requested, retain four fresh reviews: classifier, two key-blind answer solvers, and a key-blind/history-blind final judge.
+- Do not treat reviewer count as a quality metric; preserve context-isolated role separation and fail closed when isolation cannot be verified.
 - Do not award an automated pass if reviewer isolation cannot be verified.
 - Apply position-aware duplication rules during candidate review and a new selected-set duplication pass before final assembly.
 - Enforce generation and revision budgets.
@@ -122,14 +124,14 @@ Run distinct review passes described in `quality-framework.md`:
 2. independent Bloom and difficulty review;
 3. the canonical MCQ quality gate or essay-form review, including item form and fairness;
 4. position-aware conceptual and lexical duplication review;
-5. two isolated blind answer checks for MCQs;
-6. separate final judge.
+5. the review architecture selected by `review_mode` for MCQs;
+6. at least one fresh target-blind classifier and one fresh independent final/scoring judge for essays.
 
 The Bloom/difficulty reviewer must not see targets or generator metadata. Fix `reviewed_bloom`, `estimated_difficulty`, `difficulty_confidence` and `difficulty_basis` before comparing them with targets. Keep Bloom fit independent from the difficulty policy in `bloom-framework.md`; adjacent uncertainty is not a substantive quality failure.
 
-The two MCQ answer solvers see only stem, options, and permitted resources. Solver 2 receives reordered options. Compare conclusions using stable `option_id`, never letters. The final judge is key-blind and history-blind. Record the required `review_context` declaration for every isolated pass.
+In standard MCQ review, the classifier sees only the student-facing item, options and permitted resources. The item judge additionally receives authorized grounding, learning outcome, assessed scope, points and relevant blueprint constraints, but not the key, rationales, targets, exemplars or prior results. A tie-break reviewer is key-blind and receives only stem, stable option IDs/text and permitted resources; reorder options where possible. In high-assurance mode, solver 2 receives reordered options and the final judge is key-blind and history-blind. Record the role-specific packet and `review_context` declaration for every isolated pass.
 
-Independent review requires fresh subagents: four per MCQ candidate (classification, two answer solvers, final judge) and two per essay candidate (classification and final judge). Follow the subagent execution contract in `references/quality-framework.md`. This skill explicitly authorizes those review subagents.
+Independent review requires fresh subagents: two mandatory reviewers per standard MCQ, a third only for documented escalation, four for an explicitly requested high-assurance MCQ, and at least two for essays (classification and final/scoring judge). Follow the subagent execution contract in `references/quality-framework.md`. This skill explicitly authorizes those review subagents.
 
 If fresh subagents are unavailable or isolation cannot be verified, record `isolation_verified: false` and an unresolved escalation. Block candidate approval and final delivery until the required reviews can be completed. Instructor approval cannot replace these reviews.
 
@@ -157,7 +159,7 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.6`, manifest version `2026.6.0`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.7`, manifest version `2026.7.0`, the requested `review_mode`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

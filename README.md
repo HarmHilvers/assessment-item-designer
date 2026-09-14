@@ -2,7 +2,7 @@
 
 Assessment Item Designer is an Agent Plugin that helps instructors, professors, and examinators create and review multiple-choice and essay questions grounded in learning outcomes and course materials. It combines assessment blueprints, independent AI review, and instructor approval to support alignment, clarity, and answer quality.
 
-Release **2026.6** uses manifest version **2026.6.0**.
+Release **2026.7** uses manifest version **2026.7.0**.
 
 ## What it does
 
@@ -13,7 +13,7 @@ The plugin helps instructors move from course materials and learning outcomes to
 - separate target and estimated difficulty fields;
 - sequential generation informed by accepted, revisable and rejected examples;
 - position-aware conceptual and lexical duplication checks;
-- isolated, key-blind answer verification for multiple-choice questions;
+- context-isolated, role-separated review for multiple-choice questions, with adaptive escalation and optional high-assurance review;
 - answer outlines and analytic rubrics for essay questions;
 - bounded generation and revision;
 - deterministic audit validation;
@@ -25,7 +25,7 @@ The instructions and audit keys are English. Generated assessments may use anoth
 
 1. **Provide your materials.** Supply an assessment blueprint, or learning outcomes and authorized course materials. Specify the audience, language, question types and assessment requirements.
 2. **Approve the blueprint.** Agree on the concepts, points and intended cognitive demand and difficulty for each question. Revised Bloom taxonomy describes the thinking students must demonstrate; difficulty is a separate judgment.
-3. **Generate and review questions.** Candidates are created one at a time, with earlier review results informing the next candidate. Independent subagents assess cognitive demand, difficulty and answerability without seeing the intended answers or target labels. Their findings are then compared with the blueprint.
+3. **Generate and review questions.** Candidates are created one at a time, with earlier review results informing the next candidate. Standard MCQ review uses a target-blind cognitive classifier and a key-blind item judge; a fresh tie-break reviewer is added only when uncertainty or disagreement warrants it. High-assurance review retains the stronger four-reviewer procedure. Reviewers do not see prohibited keys, targets or prior verdicts.
 4. **Assemble the assessment.** Select questions that pass the required checks, review the complete set for duplication, and verify coverage, points and answer-key consistency.
 5. **Give final approval.** Review the assessment and separate answer key before approving them for use. Unresolved quality checks must be completed first.
 
@@ -75,9 +75,9 @@ The design credits:
 - [Paper on arXiv](https://arxiv.org/abs/2508.08314)
 - [Replication repository](https://github.com/calisley/ai_exams)
 
-The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure, its use of accepted and rejected examples, and a separate final judging stage. It extends that procedure with assessment blueprints, revised Bloom classification, evidence requirements, blind answer verification, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
+The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure and its use of accepted and rejected examples. It extends that procedure with assessment blueprints, revised Bloom classification, context-isolated role separation, adaptive escalation, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, or the plugin as a whole. Release 2026.6 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, adaptive reviewer counts, or the plugin as a whole. Additional high-assurance reviewers provide procedural assurance; their marginal psychometric benefit has not been established here. Independent LLM agreement is not post-administration psychometric validation. Release 2026.7 does not reproduce post-administration psychometric validation.
 
 The MCQ quality gate additionally draws on:
 

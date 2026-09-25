@@ -63,7 +63,7 @@ Permitted resources in the approved blueprint govern resource demand. A generall
 
 ## 3. Canonical MCQ quality gate
 
-Default to three strong options with stable IDs such as `opt-1` through `opt-3`. Stable IDs do not change when presentation order changes. Use more than three options only when every distractor meets the criteria below or the approved blueprint requires the additional options. Never add an implausible distractor merely to reach an option count. `[S2]`
+Default to at least four strong options with stable IDs such as `opt-1` through `opt-4`. Stable IDs do not change when presentation order changes. Use more than four options only when every distractor meets the criteria below or the approved blueprint requires the additional options. If three plausible distractors cannot be written, revise the item or escalate rather than add an implausible distractor. The four-option default is a design choice, not a conclusion drawn from `[S2]`.
 
 ### Alignment
 
@@ -97,7 +97,7 @@ Every distractor must:
 - belong to the same conceptual category as the correct answer;
 - require relevant subject knowledge to eliminate. `[S1, S3, S4]`
 
-Record a concise misconception rationale for every distractor. Prefer three strong options in total over four or five options containing weak distractors. `[S2]`
+Record a concise misconception rationale for every distractor. All three distractors in a four-option item must be plausible; revise or escalate if one is weak.
 
 ### Option quality
 

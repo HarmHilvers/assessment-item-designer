@@ -29,7 +29,7 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.7",
+  "schema_version": "2026.8",
   "review_mode": "standard",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
@@ -49,8 +49,8 @@ Required fields:
 
 ```json
 {
-  "release": "2026.7",
-  "manifest_version": "2026.7.0",
+  "release": "2026.8",
+  "manifest_version": "2026.8.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {
@@ -205,7 +205,7 @@ Each record requires:
 
 Evidence entries require `source_id`, `locator`, and `supports`. Constructed scenario details need not pretend to be quoted from a source, but assessed principles still require evidence.
 
-For `item_type: mcq`, `item` contains `stem`, `options`, `correct_option_id`, and `answer_rationale`. Each option contains stable `option_id`, `text`, and `misconception_rationale`; the correct option may use `null` for its misconception rationale. Default to three strong options. Use more only when every distractor is genuinely plausible or the approved blueprint requires it; never pad with weak distractors. `correct_option_id` must identify exactly one option.
+For `item_type: mcq`, `item` contains `stem`, `options`, `correct_option_id`, and `answer_rationale`. Each option contains stable `option_id`, `text`, and `misconception_rationale`; the correct option may use `null` for its misconception rationale. Require at least four strong options by default. Use more than four only when every distractor is genuinely plausible or the approved blueprint requires it. If three plausible distractors cannot be written, revise or escalate rather than pad with weak distractors. `correct_option_id` must identify exactly one option.
 
 For `item_type: essay`, `item` contains `prompt`, `answer_outline`, `defensible_alternatives`, `rubric`, and `empirical_limitation_notice`. Each rubric criterion has `criterion_id`, `criterion`, `max_points`, and observable `levels`; criterion maxima must equal the blueprint position points.
 
@@ -346,7 +346,7 @@ Justifications should be one or two short sentences and normally no more than 50
 
 ## Schema version
 
-Release/schema 2026.7 uses manifest version 2026.7.0. Earlier audit schemas, including 2026.6, are rejected without automatic migration; their memory and difficulty semantics must not be silently relabeled.
+Release/schema 2026.8 uses manifest version 2026.8.0. Earlier audit schemas, including 2026.7, are rejected without automatic migration; their memory, difficulty, and option-count semantics must not be silently relabeled.
 
 ## Deterministic validation boundary
 

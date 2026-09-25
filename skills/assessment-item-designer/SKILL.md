@@ -8,7 +8,7 @@ license: MIT
 
 Requires fresh subagents without inherited task history, file read/write access, and Python 3.9 or newer.
 
-Release designation: **2026.7**. Manifest version: **2026.7.0**.
+Release designation: **2026.8**. Manifest version: **2026.8.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -114,7 +114,7 @@ Do not hide budget exhaustion by renaming a revision or restarting a position.
 
 Every candidate must record its position, evidence, scenario origin, assessed concepts, `concept_signature`, targets, independent review results, fit results, difficulty confidence and basis, overlap results, exemplar context, reviewer-context declarations, revision and replacement counts, verdict, and selection status. Append each judgment or human resolution to the immutable judgment history before refreshing memory.
 
-MCQs default to three strong options with stable `option_id` values, exactly one keyed option, an answer rationale, and one misconception rationale for each distractor. Use more than three options only when every distractor is genuinely plausible or the approved blueprint requires it; never pad an item with weak distractors. Essays contain an answer outline, defensible alternatives, an observable analytic rubric with reconciled points, and a notice that the essay workflow is not empirically validated by Isley et al. (2025).
+MCQs have at least four strong options by default, with stable `option_id` values, exactly one keyed option, an answer rationale, and one misconception rationale for each distractor. Use more than four options only when every distractor is genuinely plausible or the approved blueprint requires it. If three plausible distractors cannot be written from the authorized material, revise the item or escalate rather than add a weak distractor. Essays contain an answer outline, defensible alternatives, an observable analytic rubric with reconciled points, and a notice that the essay workflow is not empirically validated by Isley et al. (2025).
 
 ## Stage 5 — Judge each candidate
 
@@ -159,7 +159,7 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.7`, manifest version `2026.7.0`, the requested `review_mode`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.8`, manifest version `2026.8.0`, the requested `review_mode`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

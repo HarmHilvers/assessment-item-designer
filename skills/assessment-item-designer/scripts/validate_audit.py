@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.7 audit declarations.
+"""Validate Assessment Item Designer 2026.8 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.7"
-MANIFEST_VERSION = "2026.7.0"
+RELEASE = "2026.8"
+MANIFEST_VERSION = "2026.8.0"
 REVIEW_MODES = {"standard", "high_assurance"}
 ESCALATION_TRIGGERS = {
     "item_judge_key_disagreement",
@@ -702,8 +702,8 @@ class AuditValidator:
         if not isinstance(item.get("stem"), str) or not item.get("stem", "").strip():
             self.error(f"{item_path}.stem", "must be a non-empty string")
         options = self.require_list(item.get("options"), f"{item_path}.options")
-        if len(options) < 3:
-            self.error(f"{item_path}.options", "must contain at least three options; three strong options are the default")
+        if len(options) < 4:
+            self.error(f"{item_path}.options", "must contain at least four options; four strong options are the default")
         ids: set[str] = set()
         for index, raw in enumerate(options):
             option_path = f"{item_path}.options[{index}]"
@@ -1176,6 +1176,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
                 {"option_id": "opt-1", "text": "Use the unrelated rule.", "misconception_rationale": "Confuses adjacent principles."},
                 {"option_id": "opt-2", "text": "Apply the supported rule.", "misconception_rationale": None},
                 {"option_id": "opt-3", "text": "Ignore the relevant evidence.", "misconception_rationale": "Treats evidence as optional."},
+                {"option_id": "opt-4", "text": "Use the rule before checking whether it applies.", "misconception_rationale": "Skips the rule's applicability condition."},
             ],
             "correct_option_id": key,
             "answer_rationale": "The supported rule directly addresses the stated evidence.",
@@ -1192,7 +1193,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             {
                 "reviewer_id": f"{cid}-S1",
                 "selected_option_id": key,
-                "options_order": ["opt-1", "opt-2", "opt-3"],
+                "options_order": ["opt-1", "opt-2", "opt-3", "opt-4"],
                 "options_reordered": False,
                 "justification": "The supported rule is the only option consistent with the case.",
                 "review_context": review_context(f"fixture-{cid}-S1", "answer_solver_1"),
@@ -1200,7 +1201,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             {
                 "reviewer_id": f"{cid}-S2",
                 "selected_option_id": key,
-                "options_order": ["opt-3", "opt-1", "opt-2"],
+                "options_order": ["opt-3", "opt-1", "opt-4", "opt-2"],
                 "options_reordered": True,
                 "justification": "The same stable option remains correct after reordering.",
                 "review_context": review_context(f"fixture-{cid}-S2", "answer_solver_2"),
@@ -1546,7 +1547,7 @@ def run_self_tests() -> int:
     tests.append(("high assurance retains four independent reviews", high, True))
 
     bad = high_assurance_fixture()
-    bad["candidates"][0]["reviews"]["answer_solver_2"]["options_order"] = ["opt-1", "opt-2", "opt-3"]
+    bad["candidates"][0]["reviews"]["answer_solver_2"]["options_order"] = ["opt-1", "opt-2", "opt-3", "opt-4"]
     tests.append(("high assurance solver 2 must reorder options", bad, False))
 
     bad = high_assurance_fixture()
@@ -1576,8 +1577,14 @@ def run_self_tests() -> int:
     tests.append(("2026.6 is rejected without migration", bad, False))
 
     bad = valid_fixture()
-    bad["candidates"][0]["item"]["options"] = bad["candidates"][0]["item"]["options"][:2]
-    tests.append(("existing option-count protection remains", bad, False))
+    bad["schema_version"] = "2026.7"
+    bad["metadata"]["release"] = "2026.7"
+    bad["metadata"]["manifest_version"] = "2026.7.1"
+    tests.append(("2026.7 is rejected without migration", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["item"]["options"] = bad["candidates"][0]["item"]["options"][:3]
+    tests.append(("three-option MCQ is rejected", bad, False))
 
     bad = valid_fixture()
     bad["candidates"][0]["scope_evidence"] = []
@@ -1626,7 +1633,7 @@ def run_self_tests() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.7 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.8 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1650,7 +1657,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.7 structure and invariants passed.")
+        print("Audit valid: declared 2026.8 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

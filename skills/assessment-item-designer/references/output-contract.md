@@ -29,7 +29,7 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.8",
+  "schema_version": "2026.9",
   "review_mode": "standard",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
@@ -49,8 +49,8 @@ Required fields:
 
 ```json
 {
-  "release": "2026.8",
-  "manifest_version": "2026.8.0",
+  "release": "2026.9",
+  "manifest_version": "2026.9.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {
@@ -261,9 +261,32 @@ Each entry in `rejection_checks` contains `criterion`, `result: pass | fail | no
 
 Use `not_applicable` only for a genuinely inapplicable criterion, including MCQ-only form criteria on essays. A passing candidate cannot contain a failed required check. A passing MCQ must record `pass` for every required criterion and satisfy the canonical checklist in `quality-framework.md`; a criterion label does not prove its semantic truth.
 
-For a standard MCQ, `reviews.item_judge` contains `verdict`, `selected_option_id`, `one_best_answer`, `uncertainty`, `justification`, and `review_context`. It independently solves the item and must agree with the generated key for an automated pass. `reviews.tie_break_review` is null unless an escalation trigger exists; when present it records `trigger`, `resolution`, the selected option, concise justification and an isolated context. A genuine multi-answer ambiguity cannot be repaired by majority vote.
+For a standard MCQ, `reviews.item_judge` contains `verdict`, `selected_option_id`, `one_best_answer`, `uncertainty`, `justification`, `option_quality_review`, and `review_context`. It independently solves the item and must agree with the generated key for an automated pass. `reviews.tie_break_review` is null unless an escalation trigger exists; when present it records `trigger`, `resolution`, the selected option, concise justification and an isolated context. A genuine multi-answer ambiguity cannot be repaired by majority vote.
 
-For a high-assurance MCQ, `reviews.answer_solver_1` and `reviews.answer_solver_2` contain `selected_option_id`, `options_order`, `options_reordered`, `justification`, and `review_context`. Solver 2 has `options_reordered: true` and an order different from both the displayed original and solver 1. `reviews.final_judge` is key-blind/history-blind and must agree with the key for an automated pass. Standard MCQs leave these high-assurance fields null; high-assurance MCQs leave `item_judge` and `tie_break_review` null.
+The key-blind MCQ judge records an `option_quality_review` in the standard `item_judge` or high-assurance `final_judge` result, not in the candidate's generated `item`. The shape is:
+
+```json
+{
+  "options": [
+    {
+      "option_id": "opt-1",
+      "plausibility": "pass",
+      "answer_category": "pass",
+      "detail_balance": "pass",
+      "cueing": "pass",
+      "observation": "Plausible within the case; same answer type and detail as the other options, with no cue."
+    }
+  ],
+  "set_level_cueing": {
+    "result": "pass",
+    "observation": "No option stands out in length, precision, grammar, or position."
+  }
+}
+```
+
+`options` must contain **every** stable option ID exactly once (the example shows one entry only to illustrate its shape). Each result is `pass | fail | uncertain`; observations must be concise and non-empty. The reviewer assesses plausibility even without knowing which option the generator keyed, and assesses category and detail relative to the complete option set. `set_level_cueing` captures cues visible only in comparison. Any `fail`, `uncertain`, missing result or missing option blocks an automated candidate `pass`, including when a tie-break resolves disagreement about the answer. A revised item requires fresh reviews. These fields record a reviewer judgment, not proof of actual student response behavior.
+
+For a high-assurance MCQ, `reviews.answer_solver_1` and `reviews.answer_solver_2` contain `selected_option_id`, `options_order`, `options_reordered`, `justification`, and `review_context`. Solver 2 has `options_reordered: true` and an order different from both the displayed original and solver 1. `reviews.final_judge` is key-blind/history-blind, contains `option_quality_review`, and must agree with the key for an automated pass. Standard MCQs leave these high-assurance fields null; high-assurance MCQs leave `item_judge` and `tie_break_review` null. Essays have no `option_quality_review`.
 
 For essays, `reviews.final_judge` contains `verdict`, `scoring_expectations_supported`, `justification`, and `review_context`. A passed essay requires a passing final judge.
 
@@ -346,8 +369,8 @@ Justifications should be one or two short sentences and normally no more than 50
 
 ## Schema version
 
-Release/schema 2026.8 uses manifest version 2026.8.0. Earlier audit schemas, including 2026.7, are rejected without automatic migration; their memory, difficulty, and option-count semantics must not be silently relabeled.
+Release/schema 2026.9 uses manifest version 2026.9.0. Earlier audit schemas, including 2026.8, are rejected without automatic migration; their review requirements must not be silently relabeled.
 
 ## Deterministic validation boundary
 
-`validate_audit.py` checks required structure, values, IDs, budgets, answer-key membership declarations, rubric totals, reviewer isolation declarations, exemplar bounds, sequential memory declarations, overlap disposition, and selected-set validation. It validates subagent ID uniqueness and history declarations but cannot prove that agents ran or stayed blind. It does not establish whether a source truly supports a concept, a Bloom label is semantically correct, a distractor is genuinely plausible, or a human approval is authentic.
+`validate_audit.py` checks required structure, values, IDs, budgets, answer-key membership declarations, rubric totals, reviewer isolation declarations, option-quality review coverage and pass disposition, exemplar bounds, sequential memory declarations, overlap disposition, and selected-set validation. It validates subagent ID uniqueness and history declarations but cannot prove that agents ran or stayed blind. It does not establish whether a source truly supports a concept, a Bloom label is semantically correct, a distractor is genuinely plausible, an option lacks a cue, or a human approval is authentic.

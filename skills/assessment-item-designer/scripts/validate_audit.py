@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.8 audit declarations.
+"""Validate Assessment Item Designer 2026.9 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.8"
-MANIFEST_VERSION = "2026.8.0"
+RELEASE = "2026.9"
+MANIFEST_VERSION = "2026.9.0"
 REVIEW_MODES = {"standard", "high_assurance"}
 ESCALATION_TRIGGERS = {
     "item_judge_key_disagreement",
@@ -35,6 +35,8 @@ DIFFICULTY = {"Easy", "Medium", "Hard"}
 FITS = {"pass", "fail"}
 MEMORY_BUCKETS = {"accepted": "pass", "revisable": "revise", "rejected": "reject"}
 DIFFICULTY_FITS = {"aligned", "adjacent_uncertain", "review_required", "mismatch"}
+OPTION_QUALITY_RESULTS = {"pass", "fail", "uncertain"}
+OPTION_QUALITY_CRITERIA = ("plausibility", "answer_category", "detail_balance", "cueing")
 VERDICTS = {"pass", "revise", "reject", "manual_review"}
 FINAL_STATUSES = {
     "selected",
@@ -733,7 +735,8 @@ class AuditValidator:
 
         if self.review_mode == "standard":
             judge = self.require_object(reviews.get("item_judge"), f"{path}.reviews.item_judge")
-            self.require_keys(judge, f"{path}.reviews.item_judge", {"verdict", "selected_option_id", "one_best_answer", "uncertainty", "justification", "review_context"})
+            self.require_keys(judge, f"{path}.reviews.item_judge", {"verdict", "selected_option_id", "one_best_answer", "uncertainty", "justification", "review_context", "option_quality_review"})
+            self.validate_option_quality_review(judge.get("option_quality_review"), ids, candidate.get("verdict"), f"{path}.reviews.item_judge.option_quality_review")
             if judge.get("selected_option_id") not in ids:
                 self.error(f"{path}.reviews.item_judge.selected_option_id", "must identify an option")
             if judge.get("one_best_answer") not in {"pass", "fail", "uncertain"}:
@@ -785,10 +788,45 @@ class AuditValidator:
                 self.validate_review_context(solver.get("review_context"), f"{solver_path}.review_context", candidate.get("verdict"), role)
                 solvers.append(solver)
             final = self.require_object(reviews.get("final_judge"), f"{path}.reviews.final_judge")
-            self.require_keys(final, f"{path}.reviews.final_judge", {"verdict", "selected_option_id", "justification", "review_context"})
+            self.require_keys(final, f"{path}.reviews.final_judge", {"verdict", "selected_option_id", "justification", "review_context", "option_quality_review"})
+            self.validate_option_quality_review(final.get("option_quality_review"), ids, candidate.get("verdict"), f"{path}.reviews.final_judge.option_quality_review")
             if candidate.get("verdict") == "pass" and (final.get("verdict") != "pass" or final.get("selected_option_id") != key):
                 self.error(f"{path}.reviews.final_judge", "must independently pass and agree by option ID")
             self.validate_review_context(final.get("review_context"), f"{path}.reviews.final_judge.review_context", candidate.get("verdict"), "final_judge")
+
+    def validate_option_quality_review(self, value: Any, option_ids: set[str], verdict: Any, path: str) -> None:
+        review = self.require_object(value, path)
+        self.require_keys(review, path, {"options", "set_level_cueing"})
+        entries = self.require_list(review.get("options"), f"{path}.options")
+        observed: set[str] = set()
+        for index, raw in enumerate(entries):
+            entry_path = f"{path}.options[{index}]"
+            entry = self.require_object(raw, entry_path)
+            self.require_keys(entry, entry_path, {"option_id", "observation", *OPTION_QUALITY_CRITERIA})
+            oid = entry.get("option_id")
+            if not isinstance(oid, str) or oid not in option_ids or oid in observed:
+                self.error(f"{entry_path}.option_id", "must identify a unique option in this item")
+            else:
+                observed.add(oid)
+            if not isinstance(entry.get("observation"), str) or not entry.get("observation", "").strip():
+                self.error(f"{entry_path}.observation", "must explain the option-level judgment")
+            for criterion in OPTION_QUALITY_CRITERIA:
+                result = entry.get(criterion)
+                if result not in OPTION_QUALITY_RESULTS:
+                    self.error(f"{entry_path}.{criterion}", "must be pass, fail, or uncertain")
+                elif verdict == "pass" and result != "pass":
+                    self.error(f"{entry_path}.{criterion}", "an MCQ cannot pass with an unresolved option defect")
+        if observed != option_ids:
+            self.error(f"{path}.options", "must review every option ID exactly once")
+        overall_path = f"{path}.set_level_cueing"
+        overall = self.require_object(review.get("set_level_cueing"), overall_path)
+        self.require_keys(overall, overall_path, {"result", "observation"})
+        if overall.get("result") not in OPTION_QUALITY_RESULTS:
+            self.error(f"{overall_path}.result", "must be pass, fail, or uncertain")
+        elif verdict == "pass" and overall.get("result") != "pass":
+            self.error(f"{overall_path}.result", "an MCQ cannot pass with unresolved set-level cues")
+        if not isinstance(overall.get("observation"), str) or not overall.get("observation", "").strip():
+            self.error(f"{overall_path}.observation", "must explain the set-level judgment")
 
     def validate_essay(self, item: dict[str, Any], position: dict[str, Any] | None, reviews: dict[str, Any], path: str) -> None:
         item_path = f"{path}.item"
@@ -1167,6 +1205,26 @@ def rejection_checks() -> list[dict[str, str]]:
     ]
 
 
+def option_quality_fixture(option_ids: list[str]) -> dict[str, Any]:
+    return {
+        "options": [
+            {
+                "option_id": oid,
+                "plausibility": "pass",
+                "answer_category": "pass",
+                "detail_balance": "pass",
+                "cueing": "pass",
+                "observation": "A credible answer in the same category, with comparable detail and no wording cue.",
+            }
+            for oid in option_ids
+        ],
+        "set_level_cueing": {
+            "result": "pass",
+            "observation": "No option stands out by length, precision, grammar, or position.",
+        },
+    }
+
+
 def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, selected: bool) -> dict[str, Any]:
     key = "opt-2"
     if item_type == "mcq":
@@ -1187,6 +1245,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             "one_best_answer": "pass",
             "uncertainty": "low",
             "justification": "The supported rule is the only option consistent with the case.",
+            "option_quality_review": option_quality_fixture([option["option_id"] for option in item["options"]]),
             "review_context": review_context(f"fixture-{cid}-item-judge", "item_judge"),
         }
         solvers = [
@@ -1211,6 +1270,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
             "verdict": "pass",
             "selected_option_id": key,
             "justification": "The item is grounded, aligned, and has one supported answer.",
+            "option_quality_review": option_quality_fixture([option["option_id"] for option in item["options"]]),
             "review_context": review_context(f"fixture-{cid}-final", "final_judge"),
         }
         bloom = "Apply"
@@ -1460,6 +1520,7 @@ def high_assurance_fixture() -> dict[str, Any]:
             "verdict": "pass",
             "selected_option_id": key,
             "justification": "The item is grounded, aligned, and has one supported answer.",
+            "option_quality_review": option_quality_fixture(order),
             "review_context": review_context(f"fixture-{candidate['candidate_id']}-final", "final_judge"),
         }
     rebuild_memory(fixture)
@@ -1503,6 +1564,27 @@ def run_self_tests() -> int:
     tests.append(("standard mode passes with classifier and item judge", valid_fixture(), True))
 
     bad = valid_fixture()
+    bad["candidates"][0]["reviews"]["item_judge"].pop("option_quality_review")
+    tests.append(("passing standard MCQ requires option-level review", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["reviews"]["item_judge"]["option_quality_review"]["options"].pop()
+    tests.append(("option-level review must cover every option", bad, False))
+
+    bad = valid_fixture()
+    entries = bad["candidates"][0]["reviews"]["item_judge"]["option_quality_review"]["options"]
+    entries[1]["option_id"] = entries[0]["option_id"]
+    tests.append(("option-level review rejects duplicate option IDs", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["reviews"]["item_judge"]["option_quality_review"]["options"][0]["cueing"] = "fail"
+    tests.append(("option cue cannot be overruled by a passing answer review", bad, False))
+
+    bad = valid_fixture()
+    bad["candidates"][0]["reviews"]["item_judge"]["option_quality_review"]["set_level_cueing"]["result"] = "uncertain"
+    tests.append(("uncertain set-level cue blocks an automatic pass", bad, False))
+
+    bad = valid_fixture()
     bad["candidates"][0]["reviews"]["classification_review"] = None
     tests.append(("missing cognitive classification fails", bad, False))
 
@@ -1540,11 +1622,19 @@ def run_self_tests() -> int:
     tests.append(("documented tie-break can resolve a key disagreement", good, True))
 
     bad = copy.deepcopy(good)
+    bad["candidates"][0]["reviews"]["item_judge"]["option_quality_review"]["options"][0]["detail_balance"] = "fail"
+    tests.append(("answer tie-break cannot waive an option-form defect", bad, False))
+
+    bad = copy.deepcopy(good)
     bad["candidates"][0]["reviews"]["tie_break_review"]["resolution"] = "majority_vote"
     tests.append(("majority vote cannot repair ambiguity", bad, False))
 
     high = high_assurance_fixture()
     tests.append(("high assurance retains four independent reviews", high, True))
+
+    bad = high_assurance_fixture()
+    bad["candidates"][0]["reviews"]["final_judge"]["option_quality_review"]["options"][0]["plausibility"] = "uncertain"
+    tests.append(("high-assurance final judge must resolve option quality", bad, False))
 
     bad = high_assurance_fixture()
     bad["candidates"][0]["reviews"]["answer_solver_2"]["options_order"] = ["opt-1", "opt-2", "opt-3", "opt-4"]
@@ -1577,10 +1667,10 @@ def run_self_tests() -> int:
     tests.append(("2026.6 is rejected without migration", bad, False))
 
     bad = valid_fixture()
-    bad["schema_version"] = "2026.7"
-    bad["metadata"]["release"] = "2026.7"
-    bad["metadata"]["manifest_version"] = "2026.7.1"
-    tests.append(("2026.7 is rejected without migration", bad, False))
+    bad["schema_version"] = "2026.8"
+    bad["metadata"]["release"] = "2026.8"
+    bad["metadata"]["manifest_version"] = "2026.8.0"
+    tests.append(("2026.8 is rejected without migration", bad, False))
 
     bad = valid_fixture()
     bad["candidates"][0]["item"]["options"] = bad["candidates"][0]["item"]["options"][:3]
@@ -1633,7 +1723,7 @@ def run_self_tests() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.8 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.9 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1657,7 +1747,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.8 structure and invariants passed.")
+        print("Audit valid: declared 2026.9 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

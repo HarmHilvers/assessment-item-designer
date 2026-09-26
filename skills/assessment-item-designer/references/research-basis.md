@@ -4,13 +4,13 @@
 
 This plugin credits the paper supplied with its design brief and the accompanying replication repository:
 
-> Isley, C. et al. (2025). *Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study*. arXiv:2508.08314v1.
+> Isley, C., Gilbert, J., Kassos, E., et al. (2026). *Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study*. Proceedings of the AAAI Conference on Artificial Intelligence, 40(45), 38626–38634. <https://doi.org/10.1609/aaai.v40i45.41205>
 
-- Reviewed paper version: arXiv:2508.08314v1, especially §3.1 and §4.3
-- Paper identifier: <https://arxiv.org/abs/2508.08314>
+- Published paper: <https://doi.org/10.1609/aaai.v40i45.41205>
+- Original preprint: arXiv:2508.08314 <https://arxiv.org/abs/2508.08314>
 - Replication repository: <https://github.com/calisley/ai_exams>
 
-The plugin adapts the pre-administration question-generation procedure described by Isley et al. (2025), particularly its course-bounded generation, iterative generate–judge–refine loop, use of accepted and rejected examples, and separate judging stages. It extends that procedure with assessment blueprints, revised Bloom classification, source-evidence requirements, context-isolated role separation, adaptive escalation, deterministic validation, bounded revision, and mandatory instructor approval. The plugin does not reproduce the study’s post-administration psychometric validation, and the study’s empirical findings apply directly to multiple-choice items rather than the essay workflow introduced here.
+The plugin adapts the pre-administration question-generation procedure described by Isley et al. (2026), particularly its course-bounded generation, iterative generate–judge–refine loop, use of accepted and rejected examples, and separate judging stages. It extends that procedure with assessment blueprints, revised Bloom classification, source-evidence requirements, context-isolated role separation, adaptive escalation, deterministic validation, bounded revision, and mandatory instructor approval. The plugin does not reproduce the study’s post-administration psychometric validation, and the study’s empirical findings apply directly to multiple-choice items rather than the essay workflow introduced here.
 
 ## What is adapted
 
@@ -63,19 +63,44 @@ The study names open-response questions as a possible future extension. Do not c
 
 Model-estimated difficulty is a pre-administration judgment, not an empirical calibration. IRT difficulty is estimated from student-response data. The two must remain distinct in language and audit fields. The finding that generated items were empirically easier also cautions against treating a model's difficulty label as measurement evidence.
 
-Release 2026.9 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses. Additional high-assurance reviewers provide procedural assurance, but their marginal psychometric benefit has not been established here. Independent LLM agreement is not empirical validation.
+Release 2026.10 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses. Additional high-assurance reviewers provide procedural assurance, but their marginal psychometric benefit has not been established here. Independent LLM agreement is not empirical validation.
+
+## Post-administration psychometric quality
+
+Pre-administration review can establish evidence about alignment, clarity, one-best-answer form, distractor plausibility, cue avoidance, fairness risks, and other construction properties. It cannot establish how an item actually functions in a population. That requires student-response data and a separate documented analysis. Isley et al. (2026) used item response theory in their field study; release 2026.10 does not reproduce that psychometric evaluation.
+
+When response data become available, appropriate post-administration evidence may include:
+
+- observed item difficulty, such as proportion correct, interpreted relative to the assessment purpose and population;
+- item discrimination, such as a corrected item-total relationship or another defensible discrimination index;
+- distractor functioning, including how often distractors are selected and whether their selection pattern is consistent with lower versus higher overall performance;
+- score reliability or test information when appropriate to the intended score interpretation;
+- IRT item parameters and test information only when sample size, model fit, dimensionality, and design support the selected model;
+- differential item functioning or other group-based fairness analyses when relevant groups, sample sizes, and the assessment design permit defensible inference;
+- qualitative review of anomalous items alongside statistical evidence before retaining, revising, or retiring them.
+
+No single statistic proves that an item or test is valid. Interpret empirical item statistics together with content evidence, response processes, internal structure, relationships to other variables where relevant, fairness, and the intended use of scores. Thresholds are context-dependent; this framework does not impose universal cutoffs. [S6, S7, S8, S9, S10]
+
+Keep model-estimated pre-administration difficulty separate from empirical post-administration results in both language and data structures. A future psychometric workflow should preserve the administered item version and response population, document exclusions and scoring, and avoid retroactively overwriting the pre-administration audit.
 
 ## MCQ item-writing evidence
 
-The canonical MCQ quality gate also draws on established item-writing guidance. These sources support general design principles such as alignment, focused stems, one-best-answer construction, plausible distractors, parallel options, cue avoidance, and construct-relevant fairness. They do not validate this plugin's complete workflow, automated judgments, Bloom classifications, or essay extensions.
+The canonical MCQ quality gate also draws on established item-writing guidance and empirical studies of item flaws and distractor functioning. These sources support general design principles such as alignment, focused stems, one-best-answer construction, plausible distractors, parallel options, cue avoidance, and construct-relevant fairness. They also support the distinction between item-construction quality and empirical post-administration functioning. They do not validate this plugin's complete workflow, automated judgments, Bloom classifications, or essay extensions.
 
 - `[S1]` Haladyna, T. M., Downing, S. M., & Rodriguez, M. C. (2002). *A review of multiple-choice item-writing guidelines for classroom assessment*. Applied Measurement in Education, 15(3), 309–333. <https://doi.org/10.1207/S15324818AME1503_5>
 - `[S2]` Rodriguez, M. C. (2005). *Three options are optimal for multiple-choice items: A meta-analysis of 80 years of research*. Educational Measurement: Issues and Practice, 24(2), 3–13. <https://doi.org/10.1111/j.1745-3992.2005.00006.x>
 - `[S3]` McGill University Teaching and Learning Knowledge Base. *Guidelines for Writing MCQs*. <https://teachingkb.mcgill.ca/tlk/guidelines-for-writing-mcqs>
 - `[S4]` Yale University Poorvu Center for Teaching and Learning. *Designing Assessment Questions*. <https://poorvucenter.yale.edu/teaching/teaching-resource-library/designing-assessment-questions>
 - `[S5]` National Board of Medical Examiners. *NBME Item-Writing Guide*, 6th ed. <https://www.nbme.org/sites/default/files/2021-02/NBME_Item%20Writing%20Guide_R_6.pdf>
+- `[S6]` Downing, S. M. (2005). *The effects of violating standard item writing principles on tests and students: The consequences of using flawed test items on achievement examinations in medical education*. Advances in Health Sciences Education, 10(2), 133–143. <https://doi.org/10.1007/s10459-004-4019-5>
+- `[S7]` Tarrant, M., & Ware, J. (2008). *Impact of item-writing flaws in multiple-choice questions on student achievement in high-stakes nursing assessments*. Medical Education, 42(2), 198–206. <https://doi.org/10.1111/j.1365-2923.2007.02957.x>
+- `[S8]` Tarrant, M., Ware, J., & Mohammed, A. M. (2009). *An assessment of functioning and non-functioning distractors in multiple-choice questions: A descriptive analysis*. BMC Medical Education, 9, 40. <https://doi.org/10.1186/1472-6920-9-40>
+- `[S9]` Haladyna, T. M., & Rodriguez, M. C. (2013). *Developing and Validating Test Items*. Routledge. <https://www.routledge.com/Developing-and-Validating-Test-Items/Haladyna-Rodriguez/p/book/9780415876056>
+- `[S10]` American Educational Research Association, American Psychological Association, & National Council on Measurement in Education. (2014). *Standards for Educational and Psychological Testing*. American Educational Research Association. <https://www.aera.net/Publications/Books/Standards-for-Educational-Psychological-Testing-2014-Edition>
 
-`[S2]` favors three options as a general item-writing recommendation. This plugin uses four options by default as a design choice. The evidence does not justify weak distractors: if three plausible distractors cannot be written from authorized material, revise the item or escalate.
+[S2] supports three options as a general default, and [S8] shows why adding non-functioning distractors is not a neutral design choice. This plugin therefore defaults to one keyed answer plus two plausible distractors. Add further options only when each additional distractor is independently plausible and construct-relevant or the approved blueprint requires the extra option. If two plausible distractors cannot be written from authorized material, revise the item or escalate rather than add filler.
+
+[S6] and [S7] provide empirical evidence that item-writing flaws can affect examinee performance and introduce construct-irrelevant variance in the studied settings. [S8] provides empirical evidence about non-functioning distractors. [S9] and [S10] provide broader test-development, validity, and fairness frameworks. These sources differ in population, purpose, and evidential scope, so the plugin does not turn their findings into universal numerical thresholds.
 
 ## Repository reuse and licensing
 

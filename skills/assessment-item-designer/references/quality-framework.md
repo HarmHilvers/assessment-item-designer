@@ -2,7 +2,7 @@
 
 Apply these controls as separate, auditable passes. A criterion failure must lead to revision, rejection, manual review, or escalation; never conceal it by editing the audit label. Use one or two short sentences of observable evidence per criterion. Do not ask for or store chain-of-thought.
 
-This file is the canonical MCQ quality gate. Source keys `[S1]` through `[S5]` refer to the full citations and evidence boundaries in [research-basis.md](research-basis.md#mcq-item-writing-evidence). They support general item-writing guidance; they do not extend the empirical claims of Isley et al. (2025).
+This file is the canonical MCQ quality gate. Source keys `[S1]` through `[S10]` refer to the full citations and evidence boundaries in [research-basis.md](research-basis.md#mcq-item-writing-evidence). They support general item-writing guidance, evidence about item-writing flaws and distractor functioning, and the broader validity/fairness framework; they do not extend the empirical claims of Isley et al. (2026).
 
 ## Subagent execution contract
 
@@ -35,7 +35,7 @@ For every candidate verify:
 - item type, points, resources, Bloom target, and difficulty target correspond to the approved position;
 - resource and calculation demands are feasible in the intended assessment format.
 
-Difficulty must come from construct-relevant subject knowledge or reasoning, not confusing wording, irrelevant reading load, or test-taking tricks. `[S1, S3, S4]`
+Difficulty must come from construct-relevant subject knowledge or reasoning, not confusing wording, irrelevant reading load, or test-taking tricks. `[S1, S3, S4, S6, S7, S9, S10]`
 
 Precedence resolves compatible instructions only; it never overrides grounding requirements. A blueprint element unsupported by authorized evidence must be returned to the instructor for resolution.
 
@@ -63,13 +63,13 @@ Permitted resources in the approved blueprint govern resource demand. A generall
 
 ## 3. Canonical MCQ quality gate
 
-Default to at least four strong options with stable IDs such as `opt-1` through `opt-4`. Stable IDs do not change when presentation order changes. Use more than four options only when every distractor meets the criteria below or the approved blueprint requires the additional options. If three plausible distractors cannot be written, revise the item or escalate rather than add an implausible distractor. The four-option default is a design choice, not a conclusion drawn from `[S2]`.
+Default to three strong options with stable IDs such as `opt-1` through `opt-3`: one keyed answer and two plausible distractors. Stable IDs do not change when presentation order changes. Use more than three options only when every additional distractor meets the criteria below or the approved blueprint requires the additional options. If two plausible distractors cannot be written, revise the item or escalate rather than add an implausible distractor. The three-option default follows the general recommendation synthesized in `[S2]` and is reinforced by evidence that many extra distractors do not function effectively `[S8]`; item-specific plausibility remains more important than reaching a fixed count.
 
 ### Alignment
 
 - The item assesses the intended learning outcome.
 - The cognitive operation required by the item matches that outcome.
-- Difficulty comes from subject knowledge or reasoning, not confusing wording or test-taking tricks. `[S1, S3, S4]`
+- Difficulty comes from subject knowledge or reasoning, not confusing wording or test-taking tricks. `[S1, S3, S4, S6, S7, S9, S10]`
 
 ### Stem
 
@@ -77,14 +77,14 @@ Default to at least four strong options with stable IDs such as `opt-1` through 
 - Make the task understandable before the options are read.
 - Use concise, precise, and unambiguous wording.
 - Include only information relevant to solving the problem.
-- Avoid negative wording such as **NOT** or **EXCEPT** unless it is necessary; when used, make it visually conspicuous and justify it in the audit. `[S1, S3, S5]`
+- Avoid negative wording such as **NOT** or **EXCEPT** unless it is necessary; when used, make it visually conspicuous and justify it in the audit. `[S1, S3, S5, S6, S7, S9]`
 
 ### One best answer
 
 - Exactly one option is clearly the best answer.
 - The answer is defensible from the information and permitted resources provided.
 - No unstated assumption is needed.
-- The answer should remain the same under competent subject-matter review. `[S1, S5]`
+- The answer should remain the same under competent subject-matter review. `[S1, S5, S6, S9]`
 
 Reject the item if multiple options are equally defensible or no option is correct.
 
@@ -95,9 +95,9 @@ Every distractor must:
 - be incorrect but plausible;
 - represent a realistic misconception, error, or incomplete understanding where possible;
 - belong to the same conceptual category as the correct answer;
-- require relevant subject knowledge to eliminate. `[S1, S3, S4]`
+- require relevant subject knowledge to eliminate. `[S1, S3, S4, S8, S9]`
 
-Record a concise misconception rationale for every distractor. All three distractors in a four-option item must be plausible; revise or escalate if one is weak.
+Record a concise misconception rationale for every distractor. In the default three-option format, both distractors must be plausible; for longer option sets, every additional distractor must meet the same standard. Revise or escalate if any option is filler or otherwise weak.
 
 ### Option quality
 
@@ -105,7 +105,7 @@ Record a concise misconception rationale for every distractor. All three distrac
 - Options use parallel grammar and similar levels of detail.
 - The correct answer is not noticeably longer, more precise, or more qualified.
 - No grammatical, lexical, logical, or positional clue reveals the answer.
-- Do not use `all of the above`, `none of the above`, option-to-option references, or complex answer combinations. `[S1, S3, S4]`
+- Do not use `all of the above`, `none of the above`, option-to-option references, or complex answer combinations. `[S1, S3, S4, S6, S7, S9, S10]`
 
 The key-blind item judge in standard mode, or final judge in high-assurance mode, records an `option_quality_review` without seeing the generated key or misconception rationales. For **every** stable option ID, record `pass | fail | uncertain` for: plausibility to a student with incomplete mastery; belonging to the same answer category as the other options; comparable detail and precision; and absence of grammatical, lexical, logical, or positional answer cues. Give a concise observation specific to that option. Review the **whole option set** separately for relative cues (for example, one exceptionally long or qualified option), with a result and observation. The reviewer may solve the item independently but must not be told which option the generator keyed. The coordinator compares these observations with the generated item and existing checks only after the blind review is fixed.
 
@@ -114,7 +114,7 @@ Any `fail` or `uncertain` result blocks automated `pass`. Revise and obtain fres
 ### Fairness
 
 - The item measures the intended construct rather than unnecessary reading complexity, cultural knowledge, or test-wiseness.
-- Context and examples do not introduce irrelevant difficulty. `[S1, S4]`
+- Context and examples do not introduce irrelevant difficulty. `[S1, S4, S7, S10]`
 
 Do not label a fixed-response MCQ as revised Bloom `Create`. Require a concise answer rationale and no hidden resource or calculation dependency.
 

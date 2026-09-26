@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.9 audit declarations.
+"""Validate Assessment Item Designer 2026.10 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.9"
-MANIFEST_VERSION = "2026.9.0"
+RELEASE = "2026.10"
+MANIFEST_VERSION = "2026.10.0"
 REVIEW_MODES = {"standard", "high_assurance"}
 ESCALATION_TRIGGERS = {
     "item_judge_key_disagreement",
@@ -186,8 +186,8 @@ class AuditValidator:
             },
         )
         citation = str(research.get("citation", ""))
-        if "Isley" not in citation or "2508.08314" not in citation:
-            self.error("$.metadata.research_basis.citation", "must identify Isley et al. and arXiv:2508.08314")
+        if "Isley" not in citation or "10.1609/aaai.v40i45.41205" not in citation:
+            self.error("$.metadata.research_basis.citation", "must identify Isley et al. and the published DOI 10.1609/aaai.v40i45.41205")
         expected = {
             "extension_not_replication": True,
             "essay_workflow_empirically_validated": False,
@@ -704,8 +704,8 @@ class AuditValidator:
         if not isinstance(item.get("stem"), str) or not item.get("stem", "").strip():
             self.error(f"{item_path}.stem", "must be a non-empty string")
         options = self.require_list(item.get("options"), f"{item_path}.options")
-        if len(options) < 4:
-            self.error(f"{item_path}.options", "must contain at least four options; four strong options are the default")
+        if len(options) < 3:
+            self.error(f"{item_path}.options", "must contain at least three options; three strong options are the default")
         ids: set[str] = set()
         for index, raw in enumerate(options):
             option_path = f"{item_path}.options[{index}]"
@@ -1293,7 +1293,7 @@ def base_candidate(cid: str, pid: str, gi: int, seq: int, item_type: str, select
                     "levels": {"insufficient": "No supported judgment.", "sufficient": "Defends a supported judgment."},
                 },
             ],
-            "empirical_limitation_notice": "Isley et al. (2025) did not empirically evaluate essay generation or rubrics.",
+            "empirical_limitation_notice": "Isley et al. (2026) did not empirically evaluate essay generation or rubrics.",
         }
         solvers = []
         final_judge = {
@@ -1392,7 +1392,7 @@ def valid_fixture() -> dict[str, Any]:
             "assessment_language": "nl",
             "created_at": "2026-08-28T12:00:00+02:00",
             "research_basis": {
-                "citation": "Isley, C. et al. (2025). Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study. arXiv:2508.08314v1.",
+                "citation": "Isley, C., Gilbert, J., Kassos, E., et al. (2026). Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study. Proceedings of the AAAI Conference on Artificial Intelligence, 40(45), 38626–38634. https://doi.org/10.1609/aaai.v40i45.41205",
                 "extension_not_replication": True,
                 "direct_empirical_scope": "short college-level multiple-choice items",
                 "essay_workflow_empirically_validated": False,
@@ -1723,7 +1723,7 @@ def run_self_tests() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.9 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.10 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1747,7 +1747,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.9 structure and invariants passed.")
+        print("Audit valid: declared 2026.10 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

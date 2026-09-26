@@ -2,7 +2,7 @@
 
 Assessment Item Designer is an Agent Plugin that helps instructors, professors, and examinators create and review multiple-choice and essay questions grounded in learning outcomes and course materials. It combines assessment blueprints, independent AI review, and instructor approval to support alignment, clarity, and answer quality.
 
-Release **2026.9** uses manifest version **2026.9.0**.
+Release **2026.10** uses manifest version **2026.10.0**.
 
 ## What it does
 
@@ -20,7 +20,7 @@ The plugin helps instructors move from course materials and learning outcomes to
 - deterministic audit validation;
 - mandatory instructor approval before delivery.
 
-Multiple-choice questions use four answer options by default. Each distractor must be plausible; items that cannot support three plausible distractors are revised or escalated.
+Multiple-choice questions use three strong answer options by default: one keyed answer and two plausible distractors. Add a fourth or later option only when every additional distractor is independently plausible and construct-relevant; never add filler merely to reach a fixed option count.
 
 The instructions and audit keys are English. Generated assessments may use another language requested by the instructor.
 
@@ -73,14 +73,15 @@ The workflow requires an application that can run fresh subagents, read and writ
 
 The design credits:
 
-> Isley, C. et al. (2025). *Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study*. arXiv:2508.08314v1.
+> Isley, C., Gilbert, J., Kassos, E., et al. (2026). *Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study*. Proceedings of the AAAI Conference on Artificial Intelligence, 40(45), 38626–38634. https://doi.org/10.1609/aaai.v40i45.41205
 
-- [Paper on arXiv](https://arxiv.org/abs/2508.08314)
+- [Published AAAI paper](https://doi.org/10.1609/aaai.v40i45.41205)
+- [Original arXiv preprint](https://arxiv.org/abs/2508.08314)
 - [Replication repository](https://github.com/calisley/ai_exams)
 
 The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure and its use of accepted and rejected examples. It extends that procedure with assessment blueprints, revised Bloom classification, context-isolated role separation, adaptive escalation, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, adaptive reviewer counts, or the plugin as a whole. Additional high-assurance reviewers provide procedural assurance; their marginal psychometric benefit has not been established here. Independent LLM agreement is not post-administration psychometric validation. Release 2026.9 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, adaptive reviewer counts, or the plugin as a whole. Additional high-assurance reviewers provide procedural assurance; their marginal psychometric benefit has not been established here. Independent LLM agreement is not post-administration psychometric validation. Release 2026.10 does not reproduce post-administration psychometric validation.
 
 The MCQ quality gate additionally draws on:
 
@@ -88,11 +89,22 @@ The MCQ quality gate additionally draws on:
 - [Rodriguez (2005)](https://doi.org/10.1111/j.1745-3992.2005.00006.x);
 - [McGill University’s Guidelines for Writing MCQs](https://teachingkb.mcgill.ca/tlk/guidelines-for-writing-mcqs);
 - [Yale Poorvu Center’s Designing Assessment Questions](https://poorvucenter.yale.edu/teaching/teaching-resource-library/designing-assessment-questions);
-- [NBME Item-Writing Guide, 6th ed.](https://www.nbme.org/sites/default/files/2021-02/NBME_Item%20Writing%20Guide_R_6.pdf).
+- [NBME Item-Writing Guide, 6th ed.](https://www.nbme.org/sites/default/files/2021-02/NBME_Item%20Writing%20Guide_R_6.pdf);
+- [Downing (2005)](https://doi.org/10.1007/s10459-004-4019-5) on consequences of item-writing flaws;
+- [Tarrant and Ware (2008)](https://doi.org/10.1111/j.1365-2923.2007.02957.x) on item-writing flaws in high-stakes assessments;
+- [Tarrant, Ware, and Mohammed (2009)](https://doi.org/10.1186/1472-6920-9-40) on functioning and non-functioning distractors;
+- [Haladyna and Rodriguez (2013), *Developing and Validating Test Items*](https://www.routledge.com/Developing-and-Validating-Test-Items/Haladyna-Rodriguez/p/book/9780415876056);
+- [*Standards for Educational and Psychological Testing* (AERA, APA, & NCME, 2014)](https://www.aera.net/Publications/Books/Standards-for-Educational-Psychological-Testing-2014-Edition).
 
-These sources support general MCQ item-writing principles, not the complete plugin workflow or its automated semantic judgments.
+These sources support general MCQ item-writing principles, evidence about item-writing flaws and distractor functioning, and the broader validity and fairness framework. They do not validate the complete plugin workflow or its automated semantic judgments.
 
-See [`research-basis.md`](skills/assessment-item-designer/references/research-basis.md) for the complete attribution, departures, and empirical limitations.
+### Pre-administration versus post-administration quality
+
+Release 2026.10 controls question construction before administration. That is not the same as empirical item validation. After student responses are available, a separate documented analysis may examine observed item difficulty, item discrimination, distractor functioning, score reliability or test information as appropriate, IRT parameters when the sample and model support them, and differential item functioning or other fairness evidence when the design permits it. No single statistic establishes validity, and fixed cutoffs should not be treated as universal across purposes, populations, or stakes.
+
+This plugin does not currently perform that post-administration analysis. Its pre-administration difficulty labels remain design estimates rather than psychometric measurements.
+
+See [`research-basis.md`](skills/assessment-item-designer/references/research-basis.md) for the complete attribution, departures, evidence boundaries, and post-administration framework.
 
 ## License
 

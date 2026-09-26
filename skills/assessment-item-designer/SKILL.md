@@ -8,7 +8,7 @@ license: MIT
 
 Requires fresh subagents without inherited task history, file read/write access, and Python 3.9 or newer.
 
-Release designation: **2026.9**. Manifest version: **2026.9.0**.
+Release designation: **2026.10**. Manifest version: **2026.10.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -19,7 +19,7 @@ Before doing substantive work, read all four references:
 3. [Bloom framework](references/bloom-framework.md)
 4. [Output contract](references/output-contract.md)
 
-Do not present this workflow as a replication of Isley et al. (2025). It is an extension of their iterative generation-and-judging architecture. Never request or store chain-of-thought; record concise, criterion-level observations instead.
+Do not present this workflow as a replication of Isley et al. (2026). It is an extension of their iterative generation-and-judging architecture. Never request or store chain-of-thought; record concise, criterion-level observations instead.
 
 ## Non-negotiable invariants
 
@@ -115,7 +115,7 @@ Do not hide budget exhaustion by renaming a revision or restarting a position.
 
 Every candidate must record its position, evidence, scenario origin, assessed concepts, `concept_signature`, targets, independent review results, fit results, difficulty confidence and basis, overlap results, exemplar context, reviewer-context declarations, revision and replacement counts, verdict, and selection status. Append each judgment or human resolution to the immutable judgment history before refreshing memory.
 
-MCQs have at least four strong options by default, with stable `option_id` values, exactly one keyed option, an answer rationale, and one misconception rationale for each distractor. Use more than four options only when every distractor is genuinely plausible or the approved blueprint requires it. If three plausible distractors cannot be written from the authorized material, revise the item or escalate rather than add a weak distractor. Essays contain an answer outline, defensible alternatives, an observable analytic rubric with reconciled points, and a notice that the essay workflow is not empirically validated by Isley et al. (2025).
+MCQs have three strong options by default, with stable `option_id` values, exactly one keyed option, an answer rationale, and one misconception rationale for each distractor. Use more than three options only when every additional distractor is independently plausible and construct-relevant or the approved blueprint requires it. If two plausible distractors cannot be written from the authorized material, revise the item or escalate rather than add a weak distractor. Essays contain an answer outline, defensible alternatives, an observable analytic rubric with reconciled points, and a notice that the essay workflow is not empirically validated by Isley et al. (2026).
 
 ## Stage 5 — Judge each candidate
 
@@ -160,7 +160,9 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.9`, manifest version `2026.9.0`, the requested `review_mode`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+Post-administration psychometric evidence is a separate stage, not an inference from these reviews. If student-response data are later analyzed, keep that analysis separate and consider observed item difficulty, item discrimination, distractor functioning, score reliability or test information as appropriate, IRT only when the data and model support it, and DIF or other fairness evidence when the design permits it. Do not relabel pre-administration difficulty estimates as empirical item parameters.
+
+The audit must state release `2026.10`, manifest version `2026.10.0`, the requested `review_mode`, the published Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

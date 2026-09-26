@@ -29,7 +29,7 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.9",
+  "schema_version": "2026.10",
   "review_mode": "standard",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
@@ -49,12 +49,12 @@ Required fields:
 
 ```json
 {
-  "release": "2026.9",
-  "manifest_version": "2026.9.0",
+  "release": "2026.10",
+  "manifest_version": "2026.10.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {
-    "citation": "Isley, C. et al. (2025). Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study. arXiv:2508.08314v1.",
+    "citation": "Isley, C., Gilbert, J., Kassos, E., et al. (2026). Assessing the Quality of AI-Generated Exams: A Large-Scale Field Study. Proceedings of the AAAI Conference on Artificial Intelligence, 40(45), 38626–38634. https://doi.org/10.1609/aaai.v40i45.41205",
     "extension_not_replication": true,
     "direct_empirical_scope": "short college-level multiple-choice items",
     "essay_workflow_empirically_validated": false,
@@ -205,7 +205,7 @@ Each record requires:
 
 Evidence entries require `source_id`, `locator`, and `supports`. Constructed scenario details need not pretend to be quoted from a source, but assessed principles still require evidence.
 
-For `item_type: mcq`, `item` contains `stem`, `options`, `correct_option_id`, and `answer_rationale`. Each option contains stable `option_id`, `text`, and `misconception_rationale`; the correct option may use `null` for its misconception rationale. Require at least four strong options by default. Use more than four only when every distractor is genuinely plausible or the approved blueprint requires it. If three plausible distractors cannot be written, revise or escalate rather than pad with weak distractors. `correct_option_id` must identify exactly one option.
+For `item_type: mcq`, `item` contains `stem`, `options`, `correct_option_id`, and `answer_rationale`. Each option contains stable `option_id`, `text`, and `misconception_rationale`; the correct option may use `null` for its misconception rationale. Require three strong options by default: one keyed answer and two plausible distractors. Use more than three only when every additional distractor is independently plausible and construct-relevant or the approved blueprint requires it. If two plausible distractors cannot be written, revise or escalate rather than pad with weak distractors. `correct_option_id` must identify exactly one option.
 
 For `item_type: essay`, `item` contains `prompt`, `answer_outline`, `defensible_alternatives`, `rubric`, and `empirical_limitation_notice`. Each rubric criterion has `criterion_id`, `criterion`, `max_points`, and observable `levels`; criterion maxima must equal the blueprint position points.
 
@@ -369,7 +369,7 @@ Justifications should be one or two short sentences and normally no more than 50
 
 ## Schema version
 
-Release/schema 2026.9 uses manifest version 2026.9.0. Earlier audit schemas, including 2026.8, are rejected without automatic migration; their review requirements must not be silently relabeled.
+Release/schema 2026.10 uses manifest version 2026.10.0. Earlier audit schemas, including 2026.9 and 2026.8, are rejected without automatic migration; their review requirements must not be silently relabeled.
 
 ## Deterministic validation boundary
 

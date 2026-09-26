@@ -8,7 +8,7 @@ license: MIT
 
 Requires fresh subagents without inherited task history, file read/write access, and Python 3.9 or newer.
 
-Release designation: **2026.8**. Manifest version: **2026.8.0**.
+Release designation: **2026.9**. Manifest version: **2026.9.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -31,6 +31,7 @@ Do not present this workflow as a replication of Isley et al. (2025). It is an e
 - Refresh `run_exemplars` after every candidate verdict and supply the refreshed memory to the next generation call.
 - Keep targets separate from independent review results.
 - For MCQs, default to `review_mode: standard`: one target-blind cognitive classifier and one key-blind independent item judge. Escalate with one fresh tie-break reviewer only when uncertainty or disagreement warrants it.
+- Require the key-blind item judge (or high-assurance final judge) to review every option and the full option set for plausible, comparable, cue-free answers. Any failed or uncertain option-quality judgment blocks an automated pass, including after an answer tie-break.
 - When `review_mode: high_assurance` is explicitly requested, retain four fresh reviews: classifier, two key-blind answer solvers, and a key-blind/history-blind final judge.
 - Do not treat reviewer count as a quality metric; preserve context-isolated role separation and fail closed when isolation cannot be verified.
 - Do not award an automated pass if reviewer isolation cannot be verified.
@@ -129,7 +130,7 @@ Run distinct review passes described in `quality-framework.md`:
 
 The Bloom/difficulty reviewer must not see targets or generator metadata. Fix `reviewed_bloom`, `estimated_difficulty`, `difficulty_confidence` and `difficulty_basis` before comparing them with targets. Keep Bloom fit independent from the difficulty policy in `bloom-framework.md`; adjacent uncertainty is not a substantive quality failure.
 
-In standard MCQ review, the classifier sees only the student-facing item, options and permitted resources. The item judge additionally receives authorized grounding, learning outcome, assessed scope, points and relevant blueprint constraints, but not the key, rationales, targets, exemplars or prior results. A tie-break reviewer is key-blind and receives only stem, stable option IDs/text and permitted resources; reorder options where possible. In high-assurance mode, solver 2 receives reordered options and the final judge is key-blind and history-blind. Record the role-specific packet and `review_context` declaration for every isolated pass.
+In standard MCQ review, the classifier sees only the student-facing item, options and permitted resources. The item judge additionally receives authorized grounding, learning outcome, assessed scope, points and relevant blueprint constraints, but not the key, rationales, targets, exemplars or prior results. The judge records the option-level and whole-set quality review specified in `references/quality-framework.md`. A tie-break reviewer is key-blind and receives only stem, stable option IDs/text and permitted resources; reorder options where possible. In high-assurance mode, solver 2 receives reordered options and the final judge is key-blind and history-blind and records the same option-quality review. A tie-break on the answer cannot resolve a quality failure. Record the role-specific packet and `review_context` declaration for every isolated pass.
 
 Independent review requires fresh subagents: two mandatory reviewers per standard MCQ, a third only for documented escalation, four for an explicitly requested high-assurance MCQ, and at least two for essays (classification and final/scoring judge). Follow the subagent execution contract in `references/quality-framework.md`. This skill explicitly authorizes those review subagents.
 
@@ -159,7 +160,7 @@ Produce:
 
 Ask the instructor for final approval. Do not describe unapproved material as ready for administration. Keep answer material separate from the student-facing assessment. Report unresolved escalations prominently.
 
-The audit must state release `2026.8`, manifest version `2026.8.0`, the requested `review_mode`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.9`, manifest version `2026.9.0`, the requested `review_mode`, the Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

@@ -2,7 +2,7 @@
 
 Assessment Item Designer is an Agent Plugin that helps instructors, professors, and examinators create and review multiple-choice and essay questions grounded in learning outcomes and course materials. It combines assessment blueprints, independent AI review, and instructor approval to support alignment, clarity, and answer quality.
 
-Release **2026.8** uses manifest version **2026.8.0**.
+Release **2026.9** uses manifest version **2026.9.0**.
 
 ## What it does
 
@@ -14,6 +14,7 @@ The plugin helps instructors move from course materials and learning outcomes to
 - sequential generation informed by accepted, revisable and rejected examples;
 - position-aware conceptual and lexical duplication checks;
 - context-isolated, role-separated review for multiple-choice questions, with adaptive escalation and optional high-assurance review;
+- key-blind, option-by-option review of plausibility, answer category, detail balance, and answer cues, including cues visible only across the full option set;
 - answer outlines and analytic rubrics for essay questions;
 - bounded generation and revision;
 - deterministic audit validation;
@@ -79,7 +80,7 @@ The design credits:
 
 The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure and its use of accepted and rejected examples. It extends that procedure with assessment blueprints, revised Bloom classification, context-isolated role separation, adaptive escalation, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, adaptive reviewer counts, or the plugin as a whole. Additional high-assurance reviewers provide procedural assurance; their marginal psychometric benefit has not been established here. Independent LLM agreement is not post-administration psychometric validation. Release 2026.8 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, adaptive reviewer counts, or the plugin as a whole. Additional high-assurance reviewers provide procedural assurance; their marginal psychometric benefit has not been established here. Independent LLM agreement is not post-administration psychometric validation. Release 2026.9 does not reproduce post-administration psychometric validation.
 
 The MCQ quality gate additionally draws on:
 

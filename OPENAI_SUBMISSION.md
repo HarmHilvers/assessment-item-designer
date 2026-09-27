@@ -242,7 +242,7 @@ Before submitting in the OpenAI plugin portal:
 
 - [ ] Merge the publication-prep pull request.
 - [ ] Test the final plugin package locally with representative prompts.
-- [ ] Prepare a production-ready logo for the portal/listing.
+- [x] Add production-ready square logo and composer icon assets to the plugin package.
 - [ ] Verify the OpenAI developer identity under the intended publisher name.
 - [ ] Confirm the submitter has Apps Management write access.
 - [ ] Create a **Skills only** submission.
@@ -257,4 +257,4 @@ Before submitting in the OpenAI plugin portal:
 
 ## Deliberately not included yet
 
-The manifest does not yet reference a logo or screenshots. Add them only after selecting production-ready visual assets so the manifest never points to missing files. Privacy-policy, terms, and support URLs are also omitted because they are optional for skills-only ZIP submissions; add them later if public pages are created.
+The manifest now references bundled square SVG logo and composer-icon assets. Screenshots are still omitted because they are not required for this skills-only package. Privacy-policy, terms, and support URLs are also omitted because they are optional for skills-only ZIP submissions; add them later if public pages are created.

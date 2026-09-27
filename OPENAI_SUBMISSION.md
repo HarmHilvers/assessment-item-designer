@@ -244,10 +244,11 @@ Current status before submitting in the OpenAI plugin portal:
 
 - [x] Merge the publication-prep pull request.
 - [ ] Test the final plugin package locally with representative prompts.
-  - Run the bundled validator self-test.
-  - Run the 5-minute quickstart through blueprint approval and final output.
-  - Run the five positive and three negative test cases below.
-  - Validate the generated `quality-audit.json`.
+  - [x] Run the bundled validator self-test (33/33 passed for release 2026.11).
+  - [ ] Run the 5-minute quickstart through blueprint approval and final output using the final 2026.11 package.
+  - [ ] Run the five positive and three negative test cases below using the final 2026.11 package.
+  - [ ] Validate the generated 2026.11 `quality-audit.json`.
+  - Earlier local runs covered the quickstart and all eight prompts on 2026.10; Negative 2 and Negative 3 were retested successfully after the 2026.11 fixes. A final upload ZIP has not yet been built and tested.
 - [ ] Replace the current square logo and composer icon with production-ready final artwork.
   - Square SVG assets and 48×48 / 256×256 PNG variants are present, but the visual design is not yet considered final.
 - [ ] Verify the OpenAI developer identity under the intended publisher name.

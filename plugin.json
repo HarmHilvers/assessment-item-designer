@@ -36,7 +36,10 @@
           "Create an assessment blueprint from my learning outcomes and course materials.",
           "Create reviewed assessment questions from this approved blueprint and course material.",
           "Review these assessment questions for alignment, clarity, answer quality, and duplication."
-        ]
+        ],
+        "brandColor": "#17324D",
+        "composerIcon": "./assets/composer-icon.svg",
+        "logo": "./assets/logo.svg"
       }
     }
   }

@@ -4,6 +4,28 @@ Assessment Item Designer is an Agent Plugin that helps instructors, professors, 
 
 Release **2026.10** uses manifest version **2026.10.0**.
 
+
+## Try it in 5 minutes
+
+Want to see the workflow before using your own course material? Start with the included [5-minute quickstart](examples/quickstart/README.md).
+
+The example gives you:
+
+- two short learning outcomes;
+- a small authorized course-material file;
+- a ready-to-copy request for a two-item multiple-choice assessment.
+
+The first milestone is an **assessment blueprint**, not an instant finished exam. Review the proposed blueprint and explicitly approve it before the skill generates and reviews final items.
+
+If Assessment Item Designer is already installed in a compatible ChatGPT/Codex environment:
+
+1. add `examples/quickstart/learning-outcomes.md` and `examples/quickstart/course-material.md` to a new task or chat;
+2. paste the text from `examples/quickstart/request.md`;
+3. review the proposed blueprint;
+4. reply: **I approve this blueprint. Continue in standard review mode.**
+
+The workflow deliberately stops rather than silently weakening quality controls when required reviewer isolation, file access, Python execution, or grounding cannot be verified.
+
 ## What it does
 
 The plugin helps instructors move from course materials and learning outcomes to an approved assessment. It supports:

@@ -11,6 +11,8 @@ The plugin does not use a remote MCP server. The submission package should there
 - **Category:** Education & Research
 - **Short description:** Grounded assessment design
 - **Website:** https://hilvers.net
+- **Privacy policy:** https://hilvers.net/privacy.html
+- **Terms of service:** https://hilvers.net/terms.html
 
 ### Long description
 
@@ -238,23 +240,37 @@ Initial public submission of Assessment Item Designer, a skills-only plugin for 
 
 ## Manual submission checklist
 
-Before submitting in the OpenAI plugin portal:
+Current status before submitting in the OpenAI plugin portal:
 
-- [ ] Merge the publication-prep pull request.
+- [x] Merge the publication-prep pull request.
 - [ ] Test the final plugin package locally with representative prompts.
-- [x] Add production-ready square logo and composer icon assets to the plugin package.
+  - Run the bundled validator self-test.
+  - Run the 5-minute quickstart through blueprint approval and final output.
+  - Run the five positive and three negative test cases below.
+  - Validate the generated `quality-audit.json`.
+- [ ] Replace the current square logo and composer icon with production-ready final artwork.
+  - Square SVG assets and 48×48 / 256×256 PNG variants are present, but the visual design is not yet considered final.
 - [ ] Verify the OpenAI developer identity under the intended publisher name.
+  - Appears to be completed; confirm the verified publisher identity is selectable in the submission flow.
 - [ ] Confirm the submitter has Apps Management write access.
+  - Appears to be available; confirm in the intended OpenAI Platform organization before submission.
 - [ ] Create a **Skills only** submission.
+  - **Currently blocked:** the OpenAI Platform UI only exposes **With MCP** for this account/organization even though this plugin does not use an MCP server. A support request should clarify access to the skills-only flow.
 - [ ] Upload the final plugin ZIP/package.
-- [ ] Confirm the listing metadata and starter prompts.
+  - Do this only after local testing and final artwork are complete.
+- [ ] Confirm the listing metadata and starter prompts in the portal.
+  - Copy-ready values are already maintained in `plugin.json` and this document.
 - [ ] Copy the five positive and three negative test cases into the Testing section.
+  - Test-case copy is ready in this document.
 - [ ] Select only countries/regions where the plugin is ready to be supported.
 - [ ] Add the initial release notes.
+  - Copy-ready release notes are included above.
 - [ ] Review and confirm the policy attestations.
+  - Public privacy policy: https://hilvers.net/privacy.html
+  - Public terms of service: https://hilvers.net/terms.html
 - [ ] Submit for review.
 - [ ] After approval, publish when ready.
 
 ## Deliberately not included yet
 
-The manifest now references bundled square SVG logo and composer-icon assets. Screenshots are still omitted because they are not required for this skills-only package. Privacy-policy, terms, and support URLs are also omitted because they are optional for skills-only ZIP submissions; add them later if public pages are created.
+Screenshots are still omitted because they are not required for this skills-only package. The plugin already has public privacy-policy and terms-of-service pages. A dedicated support page is not currently bundled; support can continue through the public contact channels on https://hilvers.net unless the submission flow requires a separate support URL.

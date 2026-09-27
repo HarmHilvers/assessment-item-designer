@@ -1,12 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title desc">
-  <title id="title">Assessment Item Designer icon</title>
-  <desc id="desc">A simplified assessment item with a checked answer.</desc>
-  <rect width="512" height="512" rx="112" fill="#17324D"/>
-  <rect x="116" y="100" width="280" height="312" rx="44" fill="#FFFFFF"/>
-  <rect x="160" y="148" width="170" height="24" rx="12" fill="#17324D"/>
-  <circle cx="172" cy="238" r="20" fill="none" stroke="#17324D" stroke-width="12"/>
-  <rect x="214" y="226" width="122" height="24" rx="12" fill="#D5DDE3"/>
-  <circle cx="172" cy="326" r="26" fill="#2A8F83"/>
-  <path d="M157 326l11 12 23-28" fill="none" stroke="#FFFFFF" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="214" y="314" width="138" height="24" rx="12" fill="#2A8F83"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Assessment Item Designer</title>
+  <desc id="desc">A square checklist card with three items. The first item is checked.</desc>
+
+  <rect width="512" height="512" fill="#FFFFFF"/>
+
+  <rect x="64" y="64" width="384" height="384" rx="46" fill="#F9FBFD" stroke="#DDE8F2" stroke-width="10"/>
+
+  <path d="M110 64h292c25.4 0 46 20.6 46 46v110H64V110c0-25.4 20.6-46 46-46z" fill="#173B63"/>
+
+  <rect x="112" y="108" width="244" height="22" rx="11" fill="#FFFFFF"/>
+  <rect x="112" y="149" width="184" height="14" rx="7" fill="#9FB7CF"/>
+
+  <circle cx="136" cy="268" r="30" fill="#173B63"/>
+  <path d="M119 268l12 13 25-29" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="192" y="243" width="202" height="19" rx="9.5" fill="#173B63"/>
+  <rect x="192" y="275" width="146" height="13" rx="6.5" fill="#B9CCE0"/>
+
+  <circle cx="136" cy="344" r="29" fill="#FFFFFF" stroke="#91AAC5" stroke-width="9"/>
+  <rect x="192" y="319" width="202" height="19" rx="9.5" fill="#91AAC5"/>
+  <rect x="192" y="351" width="146" height="13" rx="6.5" fill="#D2DFEC"/>
+
+  <circle cx="136" cy="420" r="29" fill="#FFFFFF" stroke="#91AAC5" stroke-width="9"/>
+  <rect x="192" y="395" width="202" height="19" rx="9.5" fill="#91AAC5"/>
+  <rect x="192" y="427" width="146" height="13" rx="6.5" fill="#D2DFEC"/>
 </svg>

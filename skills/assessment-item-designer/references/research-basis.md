@@ -63,11 +63,11 @@ The study names open-response questions as a possible future extension. Do not c
 
 Model-estimated difficulty is a pre-administration judgment, not an empirical calibration. IRT difficulty is estimated from student-response data. The two must remain distinct in language and audit fields. The finding that generated items were empirically easier also cautions against treating a model's difficulty label as measurement evidence.
 
-Release 2026.10 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses. Additional high-assurance reviewers provide procedural assurance, but their marginal psychometric benefit has not been established here. Independent LLM agreement is not empirical validation.
+Release 2026.11 performs pre-administration quality control only. It does not reproduce post-administration item analysis, student-response-based IRT calibration, or the field study's causal and comparative analyses. Additional high-assurance reviewers provide procedural assurance, but their marginal psychometric benefit has not been established here. Independent LLM agreement is not empirical validation.
 
 ## Post-administration psychometric quality
 
-Pre-administration review can establish evidence about alignment, clarity, one-best-answer form, distractor plausibility, cue avoidance, fairness risks, and other construction properties. It cannot establish how an item actually functions in a population. That requires student-response data and a separate documented analysis. Isley et al. (2026) used item response theory in their field study; release 2026.10 does not reproduce that psychometric evaluation.
+Pre-administration review can establish evidence about alignment, clarity, one-best-answer form, distractor plausibility, cue avoidance, fairness risks, and other construction properties. It cannot establish how an item actually functions in a population. That requires student-response data and a separate documented analysis. Isley et al. (2026) used item response theory in their field study; release 2026.11 does not reproduce that psychometric evaluation.
 
 When response data become available, appropriate post-administration evidence may include:
 

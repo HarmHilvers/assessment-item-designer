@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Assessment Item Designer 2026.10 audit declarations.
+"""Validate Assessment Item Designer 2026.11 audit declarations.
 
 This validator checks structure and declared invariants. It cannot verify the
 truth of semantic judgments, source support, reviewer independence, or human
@@ -20,8 +20,8 @@ from pathlib import Path
 from typing import Any, Iterable
 
 
-RELEASE = "2026.10"
-MANIFEST_VERSION = "2026.10.0"
+RELEASE = "2026.11"
+MANIFEST_VERSION = "2026.11.0"
 REVIEW_MODES = {"standard", "high_assurance"}
 ESCALATION_TRIGGERS = {
     "item_judge_key_disagreement",
@@ -1673,6 +1673,12 @@ def run_self_tests() -> int:
     tests.append(("2026.8 is rejected without migration", bad, False))
 
     bad = valid_fixture()
+    bad["schema_version"] = "2026.10"
+    bad["metadata"]["release"] = "2026.10"
+    bad["metadata"]["manifest_version"] = "2026.10.0"
+    tests.append(("2026.10 is rejected without migration", bad, False))
+
+    bad = valid_fixture()
     bad["candidates"][0]["item"]["options"] = bad["candidates"][0]["item"]["options"][:3]
     tests.append(("three-option MCQ is rejected", bad, False))
 
@@ -1723,7 +1729,7 @@ def run_self_tests() -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.10 quality audit.")
+    parser = argparse.ArgumentParser(description="Validate an Assessment Item Designer 2026.11 quality audit.")
     parser.add_argument("audit", nargs="?", type=Path, help="Path to quality-audit.json")
     parser.add_argument("--self-test", action="store_true", help="Run built-in valid and invalid fixture tests")
     parser.add_argument("--quiet", action="store_true", help="Print only errors")
@@ -1747,7 +1753,7 @@ def main() -> int:
         print(f"Audit invalid: {len(errors)} error(s)")
         return 1
     if not args.quiet:
-        print("Audit valid: declared 2026.10 structure and invariants passed.")
+        print("Audit valid: declared 2026.11 structure and invariants passed.")
         print("Semantic judgments, source truth, reviewer independence, and human identity were not verified.")
     return 0
 

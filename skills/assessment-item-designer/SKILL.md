@@ -8,7 +8,7 @@ license: MIT
 
 Requires fresh subagents without inherited task history, file read/write access, and Python 3.9 or newer.
 
-Release designation: **2026.10**. Manifest version: **2026.10.0**.
+Release designation: **2026.11**. Manifest version: **2026.11.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -25,6 +25,7 @@ Do not present this workflow as a replication of Isley et al. (2026). It is an e
 
 - Ground every assessed concept in authorized evidence.
 - Precedence resolves compatible instructions only; it never overrides grounding requirements. A blueprint element unsupported by authorized evidence must be returned to the instructor for resolution.
+- A user's request to skip blueprint approval, isolated reviews, or final instructor approval does not waive those gates. Explicitly say that they cannot be skipped; never agree to skip them or promise an exam without them. If source evidence or other prerequisites are also missing, name those gaps *in addition to* the mandatory gates, not as a reason to waive the gates.
 - Require instructor approval of the blueprint before generation or revision.
 - Give every final item a stable `blueprint_position_id`.
 - Generate and judge candidates sequentially, never as a same-position batch.
@@ -50,6 +51,8 @@ Accept either an assessment blueprint or learning outcomes plus authorized cours
 - `target_bloom` and `target_difficulty`;
 - permitted resources and calculation format;
 - concept-repetition policy.
+
+If no authorized evidence is available for the assessed concepts, stop before creating content-specific blueprint positions or assessment items. Ask the instructor for course material, source excerpts, or other explicit evidence to authorize the content, and for learning outcomes when they are also needed. A request to use general model knowledge, including a refusal to provide course materials, does not make that knowledge authorized course evidence. Do not invent a substantive content specification and present instructor approval of it as a substitute for the missing evidence. Instructor-provided source statements in the request itself count as authorized evidence when clearly identified as such.
 
 Apply this precedence only after the grounding invariant:
 
@@ -162,7 +165,7 @@ Ask the instructor for final approval. Do not describe unapproved material as re
 
 Post-administration psychometric evidence is a separate stage, not an inference from these reviews. If student-response data are later analyzed, keep that analysis separate and consider observed item difficulty, item discrimination, distractor functioning, score reliability or test information as appropriate, IRT only when the data and model support it, and DIF or other fairness evidence when the design permits it. Do not relabel pre-administration difficulty estimates as empirical item parameters.
 
-The audit must state release `2026.10`, manifest version `2026.10.0`, the requested `review_mode`, the published Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.11`, manifest version `2026.11.0`, the requested `review_mode`, the published Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

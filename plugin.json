@@ -16,5 +16,28 @@
     "multiple-choice",
     "essay",
     "bloom"
-  ]
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Assessment Item Designer",
+        "shortDescription": "Grounded assessment design",
+        "longDescription": "Assessment Item Designer helps instructors create and review grounded multiple-choice and essay assessment items from authorized course materials and learning outcomes. It builds an assessment blueprint, keeps Bloom targets separate from independent review, runs isolated quality checks, controls duplication, records an audit trail, and requires instructor approval before final delivery. It supports multilingual assessments while keeping its instructions and audit keys in English. The workflow is intended for pre-administration assessment design and does not replace post-administration psychometric validation.",
+        "developerName": "Harm Hilvers",
+        "category": "Education & Research",
+        "capabilities": [
+          "Build assessment blueprints from learning outcomes and authorized course materials",
+          "Generate grounded multiple-choice and essay items with answer keys and rubrics",
+          "Run independent quality, Bloom, answer, difficulty, fairness, and duplication checks",
+          "Produce auditable assessment files and require instructor approval before delivery"
+        ],
+        "websiteURL": "https://hilvers.net",
+        "defaultPrompt": [
+          "Create an assessment blueprint from my learning outcomes and course materials.",
+          "Create reviewed assessment questions from this approved blueprint and course material.",
+          "Review these assessment questions for alignment, clarity, answer quality, and duplication."
+        ]
+      }
+    }
+  }
 }

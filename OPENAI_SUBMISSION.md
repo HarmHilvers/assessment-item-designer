@@ -243,14 +243,17 @@ Initial public submission of Assessment Item Designer, a skills-only plugin for 
 Current status before submitting in the OpenAI plugin portal:
 
 - [x] Merge the publication-prep pull request.
-- [x] Test the final plugin package locally with representative prompts.
+- [ ] Test the final 2026.12.0 plugin package locally with representative prompts.
+  - Historical evidence below applies to 2026.11.0 and does not establish a complete 2026.12.0 workflow test.
   - [x] Run the bundled validator self-test (33/33 passed for release 2026.11).
   - [x] Run the 5-minute quickstart through blueprint approval and final output using the final 2026.11 package.
   - [x] Run the five positive and three negative test cases below using the final 2026.11 package.
   - [x] Validate the generated 2026.11 `quality-audit.json`.
   - The 2026.11.0 ZIP was built and extracted for local testing on 27 September 2026. All eight representative prompts and the approved-blueprint quickstart passed. All four generated audits passed independent structural validation with the validator from that ZIP. The quickstart output remains a draft pending final instructor approval. See [`LOCAL_PACKAGE_TEST_2026_11.md`](LOCAL_PACKAGE_TEST_2026_11.md) for the results and limits.
-- [ ] Replace the current square logo and composer icon with production-ready final artwork.
-  - Square SVG assets and 48×48 / 256×256 PNG variants are present, but the visual design is not yet considered final.
+- [x] Use the publisher-approved final artwork.
+  - `assets/AID.png` is the supplied 1024×1024 PNG; both manifests use it as the logo and composer icon.
+- [x] Add the supplied website, support, privacy and terms URLs to both manifests.
+  - https://hilvers.net is used for website and support; the policy links are https://hilvers.net/privacy.html and https://hilvers.net/terms.html. Publisher identity, country targeting and commerce declarations still need confirmation.
 - [ ] Verify the OpenAI developer identity under the intended publisher name.
   - Appears to be completed; confirm the verified publisher identity is selectable in the submission flow.
 - [ ] Confirm the submitter has Apps Management write access.

@@ -29,7 +29,7 @@ Use valid UTF-8 JSON. The canonical top-level shape is:
 
 ```json
 {
-  "schema_version": "2026.11",
+  "schema_version": "2026.12",
   "review_mode": "standard",
   "workflow_status": "awaiting_final_approval",
   "metadata": {},
@@ -49,8 +49,8 @@ Required fields:
 
 ```json
 {
-  "release": "2026.11",
-  "manifest_version": "2026.11.0",
+  "release": "2026.12",
+  "manifest_version": "2026.12.0",
   "assessment_language": "en",
   "created_at": "ISO-8601 timestamp",
   "research_basis": {
@@ -369,7 +369,7 @@ Justifications should be one or two short sentences and normally no more than 50
 
 ## Schema version
 
-Release/schema 2026.11 uses manifest version 2026.11.0. Earlier audit schemas, including 2026.10, 2026.9 and 2026.8, are rejected without automatic migration; their review requirements must not be silently relabeled.
+Release/schema 2026.12 uses manifest version 2026.12.0. Earlier audit schemas, including 2026.11, 2026.10, 2026.9 and 2026.8, are rejected without automatic migration; their review requirements must not be silently relabeled.
 
 ## Deterministic validation boundary
 

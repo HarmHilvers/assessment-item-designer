@@ -1,0 +1,45 @@
+{
+  "interface": {
+    "displayName": "Assessment Item Designer",
+    "shortDescription": "Grounded assessment design",
+    "longDescription": "Assessment Item Designer helps instructors create and review grounded multiple-choice and essay assessment items from authorized course materials and learning outcomes. It builds an assessment blueprint, keeps Bloom targets separate from independent review, runs isolated quality checks, controls duplication, records an audit trail, and requires instructor approval before final delivery. It supports multilingual assessments while keeping its instructions and audit keys in English. The workflow is intended for pre-administration assessment design and does not replace post-administration psychometric validation.",
+    "developerName": "Harm Hilvers",
+    "category": "Education & Research",
+    "capabilities": [
+      "Build assessment blueprints from learning outcomes and authorized course materials",
+      "Generate grounded multiple-choice and essay items with answer keys and rubrics",
+      "Run independent quality, Bloom, answer, difficulty, fairness, and duplication checks",
+      "Produce auditable assessment files and require instructor approval before delivery"
+    ],
+    "websiteURL": "https://hilvers.net",
+    "defaultPrompt": [
+      "Create an assessment blueprint from my learning outcomes and course materials.",
+      "Create reviewed assessment questions from this approved blueprint and course material.",
+      "Review these assessment questions for alignment, clarity, answer quality, and duplication."
+    ],
+    "brandColor": "#17324D",
+    "composerIcon": "./assets/AID.png",
+    "logo": "./assets/AID.png",
+    "supportURL": "https://hilvers.net",
+    "privacyPolicyURL": "https://hilvers.net/privacy.html",
+    "termsOfServiceURL": "https://hilvers.net/terms.html"
+  },
+  "name": "assessment-item-designer",
+  "version": "2026.12.0",
+  "description": "Generate and review grounded assessment items with staged quality controls.",
+  "author": {
+    "name": "Harm Hilvers",
+    "url": "https://hilvers.net"
+  },
+  "keywords": [
+    "education",
+    "assessment",
+    "multiple-choice",
+    "essay",
+    "bloom"
+  ],
+  "homepage": "https://hilvers.net",
+  "repository": "https://github.com/HarmHilvers/assessment-item-designer",
+  "license": "MIT",
+  "skills": "./skills"
+}

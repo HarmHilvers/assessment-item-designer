@@ -31,6 +31,14 @@ No additional secret is required: the workflow uses GitHub's repository token
 with `contents: write` for release creation. The upload ZIP remains subject to
 the separate OpenAI portal submission requirements.
 
+Add the brrr webhook key as the repository Actions secret `BRRR_KEY` to receive
+a notification after a new release or a failed run. Successful automatic runs
+that find an existing release stay quiet. A manual **Run workflow** also sends
+a notification, so the connection can be tested without creating another release.
+Notifications link to the release or, on failure, to the workflow run. The key
+is sent in the Authorization header to brrr and is never printed. A notification
+failure produces a warning and does not change a successful release result.
+
 
 ## Try it in 5 minutes
 

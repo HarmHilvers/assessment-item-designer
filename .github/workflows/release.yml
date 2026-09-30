@@ -7,6 +7,7 @@ on:
       - plugin.json
       - .github/workflows/release.yml
       - scripts/release_plugin.py
+      - scripts/notify_brrr.py
   workflow_dispatch:
 
 permissions:
@@ -30,10 +31,18 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Test release packaging
-        run: python3 -m unittest discover -s tests -p 'test_release_plugin.py' -v
+        run: python3 -m unittest discover -s tests -p 'test_*.py' -v
       - name: Run audit validator self-tests
         run: python3 skills/assessment-item-designer/scripts/validate_audit.py --self-test
       - name: Build, verify and publish the release
+        id: publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/release_plugin.py --publish
+      - name: Send brrr notification
+        if: always() && (failure() || steps.publish.outputs.release_status == 'published' || github.event_name == 'workflow_dispatch')
+        continue-on-error: true
+        env:
+          BRRR_KEY: ${{ secrets.BRRR_KEY }}
+          RELEASE_JOB_STATUS: ${{ job.status }}
+        run: python3 scripts/notify_brrr.py

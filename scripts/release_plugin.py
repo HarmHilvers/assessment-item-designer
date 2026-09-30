@@ -146,7 +146,7 @@ def publish(root, manifest, archive):
     existing = get_release(repository, tag)
     if existing and not existing['draft']:
         print(f'Release {tag} already exists; left unchanged: {existing["html_url"]}')
-        return
+        return 'existing'
     sha = os.environ['GITHUB_SHA']
     require(subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip() == sha,
             'Checkout does not match the workflow commit')
@@ -157,8 +157,7 @@ def publish(root, manifest, archive):
     command = ['gh', 'release']
     if not existing:
         notes = archive.parent / 'release-notes.md'
-        notes.write_text(manifest['extensions']['com.openai']['publication']['release_notes']
-                         + '\n\nDownload the upload ZIP below. OpenAI portal submission is a separate step.\n')
+        notes.write_text(manifest['extensions']['com.openai']['publication']['release_notes'] + '\n')
         subprocess.run(command + ['create', tag, str(archive), '--repo', repository,
                        '--target', sha, '--title', f'Assessment Item Designer {version}',
                        '--notes-file', str(notes), '--draft'], check=True, cwd=root)
@@ -179,6 +178,7 @@ def publish(root, manifest, archive):
     require(saved and not saved['draft'] and any(a['name'] == archive.name for a in saved['assets']),
             'Published release or ZIP could not be verified')
     print(f'Published {saved["html_url"]}')
+    return 'published'
 
 
 def main():
@@ -189,7 +189,10 @@ def main():
     manifest, archive = build_package(ROOT, args.output)
     print(f'Verified upload ZIP: {archive}')
     if args.publish:
-        publish(ROOT, manifest, archive)
+        status = publish(ROOT, manifest, archive)
+        if os.environ.get('GITHUB_OUTPUT'):
+            with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+                output.write(f'release_status={status}\n')
 
 
 if __name__ == '__main__':

@@ -4,9 +4,6 @@ Assessment Item Designer is an Agent Plugin that helps instructors, professors, 
 
 Release **2026.12** uses manifest version **2026.12.0**.
 
-The plugin uses the publisher-supplied [AID.png](assets/AID.png) for both its
-logo and composer icon. This replaces the previous SVG and PNG artwork.
-
 ## Try it in 5 minutes
 
 Want to see the workflow before using your own course material? Start with the included [5-minute quickstart](examples/quickstart/README.md).

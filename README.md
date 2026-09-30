@@ -4,6 +4,33 @@ Assessment Item Designer is an Agent Plugin that helps instructors, professors, 
 
 Release **2026.12** uses manifest version **2026.12.0**.
 
+## Automatic GitHub releases
+
+When a new version in `plugin.json` is pushed or merged into `main`, GitHub Actions
+validates the package and publishes `v<version>` with
+`assessment-item-designer-<version>-upload.zip` attached. The release workflow can
+also be started from the Actions page with **Run workflow** on `main`. Installing
+the workflow creates the first release for the current version if it has not
+already been released.
+
+Update the version in both manifests, the skill instructions, and the audit
+validator together. The workflow rejects inconsistent version declarations and
+runs the audit validator's self-tests before publishing. Existing published
+versions are left unchanged; use a new version for any revised package.
+
+The ZIP includes the root manifest, Codex compatibility manifest, license,
+referenced PNG icons, and the skill with its supporting files. Repository
+documentation, old artwork, examples, tests, workflow files and caches are
+excluded. Build and inspect the same package locally with:
+
+```sh
+python3 scripts/release_plugin.py
+```
+
+No additional secret is required: the workflow uses GitHub's repository token
+with `contents: write` for release creation. The upload ZIP remains subject to
+the separate OpenAI portal submission requirements.
+
 
 ## Try it in 5 minutes
 

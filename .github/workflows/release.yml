@@ -1,0 +1,39 @@
+name: Release plugin upload ZIP
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - plugin.json
+      - .github/workflows/release.yml
+      - scripts/release_plugin.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: plugin-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Check out the exact source revision
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Test release packaging
+        run: python3 -m unittest discover -s tests -p 'test_release_plugin.py' -v
+      - name: Run audit validator self-tests
+        run: python3 skills/assessment-item-designer/scripts/validate_audit.py --self-test
+      - name: Build, verify and publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/release_plugin.py --publish

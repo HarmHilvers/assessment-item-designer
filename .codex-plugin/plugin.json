@@ -25,7 +25,7 @@
     "termsOfServiceURL": "https://hilvers.net/terms.html"
   },
   "name": "assessment-item-designer",
-  "version": "2026.12.0",
+  "version": "2026.13.0",
   "description": "Generate and review grounded assessment items with staged quality controls.",
   "author": {
     "name": "Harm Hilvers",
@@ -40,6 +40,6 @@
   ],
   "homepage": "https://hilvers.net",
   "repository": "https://github.com/HarmHilvers/assessment-item-designer",
-  "license": "MIT",
+  "license": "EUPL-1.2",
   "skills": "./skills"
 }

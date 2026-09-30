@@ -1,14 +1,14 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "assessment-item-designer",
-  "version": "2026.12.0",
+  "version": "2026.13.0",
   "description": "Generate and review grounded assessment items with staged quality controls.",
   "author": {
     "name": "Harm Hilvers",
     "url": "https://hilvers.net"
   },
   "homepage": "https://hilvers.net",
-  "license": "MIT",
+  "license": "EUPL-1.2",
   "repository": "https://github.com/HarmHilvers/assessment-item-designer",
   "keywords": [
     "education",
@@ -45,7 +45,7 @@
         "termsOfServiceURL": "https://hilvers.net/terms.html"
       },
       "publication": {
-        "release_notes": "Release 2026.12.0 adds the publisher-supplied AID icon, support and policy links, and a synchronized Codex compatibility manifest. Skill and audit version declarations are updated to 2026.12; the assessment workflow is unchanged."
+        "release_notes": "Release 2026.13.0 changes the project license to the European Union Public Licence (EUPL 1.2). Skill and audit version declarations are updated to 2026.13; the assessment workflow is unchanged."
       }
     }
   }

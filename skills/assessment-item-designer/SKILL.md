@@ -1,14 +1,14 @@
 ---
 name: assessment-item-designer
 description: Create or review grounded multiple-choice and essay assessment items through an approved blueprint, revised Bloom targets, sequential exemplar-guided candidate generation, mandatory isolated subagent reviews, duplication control, deterministic audit validation, and mandatory instructor approval. Use when asked to design an exam, test, quiz, MCQs, essay questions, answer keys, assessment blueprints, or to quality-review existing assessment items.
-license: MIT
+license: EUPL-1.2
 ---
 
 # Assessment Item Designer
 
 Requires fresh subagents without inherited task history, file read/write access, and Python 3.9 or newer.
 
-Release designation: **2026.12**. Manifest version: **2026.12.0**.
+Release designation: **2026.13**. Manifest version: **2026.13.0**.
 
 Use this skill to create or review assessment items. Work in small, visible stages. Fail closed when grounding, reviewer isolation, selection integrity, or instructor approval cannot be established. The skill's instructions and audit keys are English; the assessment may use the instructor's requested language.
 
@@ -165,7 +165,7 @@ Ask the instructor for final approval. Do not describe unapproved material as re
 
 Post-administration psychometric evidence is a separate stage, not an inference from these reviews. If student-response data are later analyzed, keep that analysis separate and consider observed item difficulty, item discrimination, distractor functioning, score reliability or test information as appropriate, IRT only when the data and model support it, and DIF or other fairness evidence when the design permits it. Do not relabel pre-administration difficulty estimates as empirical item parameters.
 
-The audit must state release `2026.12`, manifest version `2026.12.0`, the requested `review_mode`, the published Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
+The audit must state release `2026.13`, manifest version `2026.13.0`, the requested `review_mode`, the published Isley et al. citation, empirical limitations, blueprint status, exemplar registries, budgets, final selected-set duplication result, and escalations.
 
 ## Review mode
 

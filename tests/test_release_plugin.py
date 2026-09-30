@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -64,7 +65,8 @@ class PackageTests(unittest.TestCase):
     def test_manifest_only_version_bump_is_rejected(self):
         path = self.root / 'plugin.json'
         data = json.loads(path.read_text())
-        data['version'] = '2026.13.0'
+        major, minor, patch_version = map(int, data['version'].split('.'))
+        data['version'] = f'{major}.{minor + 1}.{patch_version}'
         path.write_text(json.dumps(data))
         with self.assertRaisesRegex(ValueError, 'out of sync'):
             self.build()
@@ -76,7 +78,7 @@ class PackageTests(unittest.TestCase):
 
     def test_old_validator_version_is_rejected(self):
         path = self.root / 'skills/assessment-item-designer/scripts/validate_audit.py'
-        path.write_text(path.read_text().replace('RELEASE = "2026.12"', 'RELEASE = "2026.11"'))
+        path.write_text(re.sub(r'RELEASE = "[^"]+"', 'RELEASE = "1900.1"', path.read_text(), count=1))
         with self.assertRaisesRegex(ValueError, 'Audit validator version'):
             self.build()
 
@@ -134,7 +136,7 @@ class PublicationTests(unittest.TestCase):
         error = urllib.error.HTTPError('url', 403, 'Forbidden', {}, None)
         with patch.object(release.urllib.request, 'urlopen', side_effect=error):
             with self.assertRaises(urllib.error.HTTPError):
-                release.get_release('owner/repo', 'v2026.12.0')
+                release.get_release('owner/repo', 'v' + self.manifest['version'])
 
     def test_retry_resumes_draft_without_overwriting_assets(self):
         missing = subprocess.CompletedProcess([], 1, stdout='')

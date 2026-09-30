@@ -2,7 +2,7 @@
 
 Assessment Item Designer is an Agent Plugin that helps instructors, professors, and examinators create and review multiple-choice and essay questions grounded in learning outcomes and course materials. It combines assessment blueprints, independent AI review, and instructor approval to support alignment, clarity, and answer quality.
 
-Release **2026.12** uses manifest version **2026.12.0**.
+Release **2026.13** uses manifest version **2026.13.0**.
 
 ## Try it in 5 minutes
 
@@ -102,7 +102,7 @@ The design credits:
 
 The plugin adapts the paper's pre-administration, course-bounded generate–judge–refine procedure and its use of accepted and rejected examples. It extends that procedure with assessment blueprints, revised Bloom classification, context-isolated role separation, adaptive escalation, deterministic validation, bounded refinement, essays, rubrics, and instructor approval.
 
-This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, adaptive reviewer counts, or the plugin as a whole. Additional high-assurance reviewers provide procedural assurance; their marginal psychometric benefit has not been established here. Independent LLM agreement is not post-administration psychometric validation. Release 2026.12 does not reproduce post-administration psychometric validation.
+This is an extension, not a replication or methodologically equivalent implementation. The study's direct empirical evidence concerns short, college-level MCQs. It does not directly validate the essay workflow, Bloom classification, rubrics, approval gates, adaptive reviewer counts, or the plugin as a whole. Additional high-assurance reviewers provide procedural assurance; their marginal psychometric benefit has not been established here. Independent LLM agreement is not post-administration psychometric validation. Release 2026.13 does not reproduce post-administration psychometric validation.
 
 The MCQ quality gate additionally draws on:
 
@@ -121,7 +121,7 @@ These sources support general MCQ item-writing principles, evidence about item-w
 
 ### Pre-administration versus post-administration quality
 
-Release 2026.12 controls question construction before administration. That is not the same as empirical item validation. After student responses are available, a separate documented analysis may examine observed item difficulty, item discrimination, distractor functioning, score reliability or test information as appropriate, IRT parameters when the sample and model support them, and differential item functioning or other fairness evidence when the design permits it. No single statistic establishes validity, and fixed cutoffs should not be treated as universal across purposes, populations, or stakes.
+Release 2026.13 controls question construction before administration. That is not the same as empirical item validation. After student responses are available, a separate documented analysis may examine observed item difficulty, item discrimination, distractor functioning, score reliability or test information as appropriate, IRT parameters when the sample and model support them, and differential item functioning or other fairness evidence when the design permits it. No single statistic establishes validity, and fixed cutoffs should not be treated as universal across purposes, populations, or stakes.
 
 This plugin does not currently perform that post-administration analysis. Its pre-administration difficulty labels remain design estimates rather than psychometric measurements.
 
@@ -129,6 +129,6 @@ See [`research-basis.md`](skills/assessment-item-designer/references/research-ba
 
 ## License
 
-Licensed under the [MIT License](LICENSE). Copyright © 2026 Harm Hilvers.
+Licensed under the [European Union Public Licence (EUPL 1.2)](LICENSE). Copyright © 2026 Harm Hilvers.
 
 The license covers this project's original instructions, documentation and scripts. Referenced research and third-party materials retain their own terms.

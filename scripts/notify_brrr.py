@@ -4,9 +4,8 @@ import json
 import os
 from pathlib import Path
 import sys
-import urllib.error
+import subprocess
 import urllib.parse
-import urllib.request
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -37,25 +36,26 @@ def send(payload, key):
         key = url.path[len('/v1/'):]
     if not key or '/' in key or any(c.isspace() for c in key):
         raise ValueError('BRRR_KEY bevat geen geldige webhook-sleutel.')
-    request = urllib.request.Request(
-        'https://api.brrr.now/v1/send',
-        data=json.dumps(payload, ensure_ascii=False).encode('utf-8'),
-        headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
-        method='POST')
-    with urllib.request.urlopen(request, timeout=20) as response:
-        if not 200 <= response.status < 300:
-            raise ValueError(f'brrr gaf HTTP {response.status}.')
-        print(f'brrr heeft de melding geaccepteerd (HTTP {response.status}).')
+    # Use the documented curl transport. Pass the credential through stdin,
+    # rather than exposing it in a URL, command argument or diagnostic output.
+    result = subprocess.run(
+        ['curl', '--silent', '--show-error', '--fail', '--max-time', '20',
+         '--config', '-', '--header', 'Content-Type: application/json',
+         '--data', json.dumps(payload, ensure_ascii=False), '--output', '/dev/null',
+         '--write-out', '%{http_code}', 'https://api.brrr.now/v1/send'],
+        input='header = ' + json.dumps(f'Authorization: Bearer {key}') + '\n',
+        text=True, capture_output=True, timeout=25)
+    status = result.stdout.strip()
+    if result.returncode or not status.startswith('2'):
+        raise ValueError(f'brrr-melding niet verzonden (HTTP {status if status.isdigit() else "onbekend"}).')
+    print(f'brrr heeft de melding geaccepteerd (HTTP {status}).')
 
 
 def main():
     try:
         send(notification(ROOT, os.environ), os.environ.get('BRRR_KEY', ''))
-    except urllib.error.HTTPError as error:
-        print(f'::warning::brrr-melding geweigerd (HTTP {error.code}).', file=sys.stderr)
-        return 1
-    except urllib.error.URLError:
-        print('::warning::brrr kon niet worden bereikt.', file=sys.stderr)
+    except (subprocess.TimeoutExpired, OSError):
+        print('::warning::brrr kon niet worden bereikt of curl is niet beschikbaar.', file=sys.stderr)
         return 1
     except (ValueError, TimeoutError) as error:
         print(f'::warning::{error}', file=sys.stderr)

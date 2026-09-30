@@ -2,7 +2,8 @@ import importlib.util
 import json
 from pathlib import Path
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location('notify_brrr', ROOT / 'scripts/notify_brrr.py')
@@ -24,30 +25,35 @@ class NotificationTests(unittest.TestCase):
         self.assertIn('mislukt', payload['message'])
 
     def test_key_is_in_header_not_url_or_payload(self):
-        response = MagicMock()
-        response.__enter__.return_value.status = 200
-        with patch.object(notify.urllib.request, 'urlopen', return_value=response) as open_url:
+        response = subprocess.CompletedProcess([], 0, stdout='200')
+        with patch.object(notify.subprocess, 'run', return_value=response) as run:
             notify.send({'message': 'Test'}, 'br_usr_test')
-            request = open_url.call_args.args[0]
-            self.assertEqual(request.full_url, 'https://api.brrr.now/v1/send')
-            self.assertEqual(request.get_header('Authorization'), 'Bearer br_usr_test')
-            self.assertEqual(json.loads(request.data), {'message': 'Test'})
+            command = run.call_args.args[0]
+            self.assertEqual(command[-1], 'https://api.brrr.now/v1/send')
+            self.assertFalse(any('br_usr_test' in argument for argument in command))
+            self.assertIn('Authorization: Bearer br_usr_test', run.call_args.kwargs['input'])
+            self.assertEqual(json.loads(command[command.index('--data') + 1]), {'message': 'Test'})
 
     def test_complete_webhook_is_supported(self):
-        response = MagicMock()
-        response.__enter__.return_value.status = 200
-        with patch.object(notify.urllib.request, 'urlopen', return_value=response) as open_url:
+        response = subprocess.CompletedProcess([], 0, stdout='200')
+        with patch.object(notify.subprocess, 'run', return_value=response) as run:
             notify.send({'message': 'Test'}, 'https://api.brrr.now/v1/br_usr_test')
-            self.assertEqual(open_url.call_args.args[0].get_header('Authorization'), 'Bearer br_usr_test')
+            self.assertIn('Authorization: Bearer br_usr_test', run.call_args.kwargs['input'])
 
     def test_missing_secret_sends_nothing(self):
-        with patch.object(notify.urllib.request, 'urlopen') as open_url:
+        with patch.object(notify.subprocess, 'run') as run:
             with self.assertRaisesRegex(ValueError, 'ontbreekt'):
                 notify.send({'message': 'Test'}, '')
-            open_url.assert_not_called()
+            run.assert_not_called()
 
     def test_unrelated_webhook_is_rejected(self):
-        with patch.object(notify.urllib.request, 'urlopen') as open_url:
+        with patch.object(notify.subprocess, 'run') as run:
             with self.assertRaises(ValueError):
                 notify.send({'message': 'Test'}, 'https://example.com/v1/br_usr_test')
-            open_url.assert_not_called()
+            run.assert_not_called()
+
+    def test_http_failure_is_not_reported_as_delivery(self):
+        response = subprocess.CompletedProcess([], 22, stdout='403')
+        with patch.object(notify.subprocess, 'run', return_value=response):
+            with self.assertRaisesRegex(ValueError, 'HTTP 403'):
+                notify.send({'message': 'Test'}, 'br_usr_test')

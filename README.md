@@ -7,42 +7,6 @@ Release **2026.12** uses manifest version **2026.12.0**.
 The plugin uses the publisher-supplied [AID.png](assets/AID.png) for both its
 logo and composer icon. This replaces the previous SVG and PNG artwork.
 
-## Automatic GitHub releases
-
-When a new version in `plugin.json` is pushed or merged into `main`, GitHub Actions
-validates the package and publishes `v<version>` with
-`assessment-item-designer-<version>-upload.zip` attached. The release workflow can
-also be started from the Actions page with **Run workflow** on `main`. Installing
-the workflow creates the first release for the current version if it has not
-already been released.
-
-Update the version in both manifests, the skill instructions, and the audit
-validator together. The workflow rejects inconsistent version declarations and
-runs the audit validator's self-tests before publishing. Existing published
-versions are left unchanged; use a new version for any revised package.
-
-The ZIP includes the root manifest, Codex compatibility manifest, license,
-referenced PNG icons, and the skill with its supporting files. Repository
-documentation, old artwork, examples, tests, workflow files and caches are
-excluded. Build and inspect the same package locally with:
-
-```sh
-python3 scripts/release_plugin.py
-```
-
-No additional secret is required: the workflow uses GitHub's repository token
-with `contents: write` for release creation. The upload ZIP remains subject to
-the separate OpenAI portal submission requirements.
-
-Add the brrr webhook key as the repository Actions secret `BRRR_KEY` to receive
-a notification after a new release or a failed run. Successful automatic runs
-that find an existing release stay quiet. A manual **Run workflow** also sends
-a notification, so the connection can be tested without creating another release.
-Notifications link to the release or, on failure, to the workflow run. The key
-is sent in the Authorization header to brrr and is never printed. A notification
-failure produces a warning and does not change a successful release result.
-
-
 ## Try it in 5 minutes
 
 Want to see the workflow before using your own course material? Start with the included [5-minute quickstart](examples/quickstart/README.md).

@@ -16,13 +16,13 @@ class NotificationTests(unittest.TestCase):
         payload = notify.notification(ROOT, {'GITHUB_REPOSITORY': 'owner/repo',
             'GITHUB_RUN_ID': '123', 'RELEASE_JOB_STATUS': 'success'})
         self.assertIn('/releases/tag/v', payload['open_url'])
-        self.assertIn('beschikbaar', payload['message'])
+        self.assertIn('is available. Download the upload ZIP from GitHub.', payload['message'])
 
     def test_failure_links_to_workflow(self):
         payload = notify.notification(ROOT, {'GITHUB_REPOSITORY': 'owner/repo',
             'GITHUB_RUN_ID': '123', 'RELEASE_JOB_STATUS': 'failure'})
         self.assertEqual(payload['open_url'], 'https://github.com/owner/repo/actions/runs/123')
-        self.assertIn('mislukt', payload['message'])
+        self.assertIn('failed. Check the workflow for details.', payload['message'])
 
     def test_key_is_in_header_not_url_or_payload(self):
         response = subprocess.CompletedProcess([], 0, stdout='200')
@@ -42,7 +42,7 @@ class NotificationTests(unittest.TestCase):
 
     def test_missing_secret_sends_nothing(self):
         with patch.object(notify.subprocess, 'run') as run:
-            with self.assertRaisesRegex(ValueError, 'ontbreekt'):
+            with self.assertRaisesRegex(ValueError, 'missing or empty'):
                 notify.send({'message': 'Test'}, '')
             run.assert_not_called()
 
